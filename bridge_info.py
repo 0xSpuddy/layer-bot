@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import json
 import csv
 from datetime import datetime
-from query_layer import generate_queryId, get_report_timestamp
+from query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
 
 def load_abi():
     """Load the ABI from the JSON file."""
@@ -12,23 +12,39 @@ def load_abi():
         return json.load(f)
 
 def setup_csv():
-    """Setup CSV file with headers if it doesn't exist."""
+    """Setup CSV file with headers if it doesn't exist or if headers are missing."""
     csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
     if not csv_file:
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
         return False
         
-    if not os.path.exists(csv_file):
-        try:
+    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Report Timestamp', 'Claimed']
+    
+    try:
+        # Check if file exists and has headers
+        if os.path.exists(csv_file):
+            with open(csv_file, 'r', newline='') as f:
+                reader = csv.reader(f)
+                first_row = next(reader, None)
+                if first_row != headers:
+                    # Headers don't match, create new file with correct headers
+                    print(f"Updating headers in CSV file: {csv_file}")
+                    with open(csv_file, 'w', newline='') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(headers)
+                    return True
+        else:
+            # File doesn't exist, create new file with headers
+            print(f"Creating new CSV file: {csv_file}")
             with open(csv_file, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Report Timestamp'])
-            print(f"Created new CSV file: {csv_file}")
+                writer.writerow(headers)
             return True
-        except Exception as e:
-            print(f"Error creating CSV file: {e}")
-            return False
-    return True
+            
+        return True
+    except Exception as e:
+        print(f"Error setting up CSV file: {e}")
+        return False
 
 def get_existing_deposit_ids():
     """Read the CSV file and return a set of existing deposit IDs."""
@@ -49,7 +65,8 @@ def get_existing_deposit_ids():
             print(f"Error reading CSV file: {e}")
     return existing_ids
 
-def save_deposit_to_csv(deposit_id, deposit_info):
+
+def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
     """Save deposit information to CSV file."""
     csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
     if not csv_file:
@@ -75,7 +92,8 @@ def save_deposit_to_csv(deposit_id, deposit_info):
             deposit_info[3],
             deposit_info[4],
             query_info['queryId'],
-            report_timestamp or ''  # Use empty string if no timestamp found
+            report_timestamp or '',  # Use empty string if no timestamp found
+            'Yes' if claimed else 'No'
         ])
 
 def main():
@@ -107,6 +125,10 @@ def main():
         print("Getting existing deposit IDs...")
         existing_ids = get_existing_deposit_ids()
         print(f"Found {len(existing_ids)} existing deposits in CSV file")
+        
+        # Get claimed deposit IDs
+        print("Getting claimed deposit IDs...")
+        claimed_ids = get_claimed_deposit_ids()
         
         # Initialize Web3
         print(f"Initializing Web3 with RPC URL: {rpc_url}")
@@ -182,6 +204,11 @@ def main():
                     # Get the report timestamp
                     report_timestamp = get_report_timestamp(query_info['queryId'])
                     
+                    # Check if deposit has been claimed
+                    is_claimed = str(current_deposit_id) in claimed_ids
+                    print(f"spud Claimed: {is_claimed}")
+                    
+                    
                     # Print to terminal
                     print(f"\nNew Deposit ID: {current_deposit_id}")
                     print(f"Sender: {deposit_info[0]}")
@@ -191,9 +218,10 @@ def main():
                     print(f"Block Height: {deposit_info[4]}")
                     print(f"Query ID: {query_info['queryId']}")
                     print(f"Report Timestamp: {report_timestamp or 'Not found'}")
+                    print(f"Claimed: {'Yes' if is_claimed else 'No'}")
                     
                     # Save to CSV
-                    save_deposit_to_csv(current_deposit_id, deposit_info)
+                    save_deposit_to_csv(current_deposit_id, deposit_info, is_claimed)
                     new_deposits += 1
                 
                 current_deposit_id += 1
