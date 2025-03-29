@@ -9,22 +9,25 @@ A Python-based tool for interacting with the Layer blockchain.
 pip install -r requirements.txt
 ```
 
-2. Copy the example environment file and configure it:
+2. Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
 
 3. Edit the `.env` file with your RPC URL.
+```bash
+nano .env
+```
+
+4. Download and extract the latest (layer binary[https://github.com/tellor-io/layer/releases/tag/4.0.1]). 
+Be sure to choose the binary that matches your system and replace the link as needed:
+```bash
+wget https://github.com/tellor-io/layer/releases/download/v3.0.4/layer_Darwin_arm64.tar.gz && tar -xvzf layer_Darwin_arm64.tar.gz
+```
 
 ## Usage
 
-To list all keys:
+To generate csv files with Tellor testnet bridge information:
 ```bash
-python list_keys.py
+python bridge_info.py
 ```
-
-## Requirements
-
-- Python 3.7+
-- The `layerd` binary in the project root directory
-- python-dotenv package 
