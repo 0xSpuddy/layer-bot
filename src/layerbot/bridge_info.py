@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import json
 import csv
 from datetime import datetime
-from query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
+from layerbot.query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
 
 def load_abi():
     """Load the ABI from the JSON file."""
@@ -217,7 +217,7 @@ def main():
                     print(f"Tip: {deposit_info[3]}")
                     print(f"Block Height: {deposit_info[4]}")
                     print(f"Query ID: {query_info['queryId']}")
-                    print(f"Report Timestamp: {report_timestamp or 'Not found'}")
+                    print(f"Report Timestamp: {report_timestamp if report_timestamp else 'Not found'}")
                     print(f"Claimed: {'Yes' if is_claimed else 'No'}")
                     
                     # Save to CSV
