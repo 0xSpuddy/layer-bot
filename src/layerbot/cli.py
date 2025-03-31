@@ -1,3 +1,9 @@
+import warnings
+# Filter warnings before other imports
+warnings.filterwarnings('ignore', 
+                       message='Network .* does not have a valid ChainId.*',
+                       category=UserWarning)
+
 import click
 import os
 import time
@@ -6,6 +12,9 @@ from dotenv import load_dotenv
 from layerbot.bridge_info import setup_csv, get_existing_deposit_ids, save_deposit_to_csv, load_abi
 from layerbot.query_layer import get_claimed_deposit_ids, generate_queryId, get_report_timestamp
 from web3 import Web3
+from layerbot.commands.test import test
+from layerbot.commands.tx import tx
+
 
 @click.group()
 def cli():
@@ -96,6 +105,9 @@ def bridge_scan():
             click.echo(f"Error during scan: {e}")
             click.echo("Retrying in 10 seconds...")
             time.sleep(10)
+
+cli.add_command(test)
+cli.add_command(tx)
 
 if __name__ == '__main__':
     cli()
