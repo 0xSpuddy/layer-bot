@@ -14,6 +14,8 @@ from layerbot.query_layer import get_claimed_deposit_ids, generate_queryId, get_
 from web3 import Web3
 from layerbot.commands.test import test
 from layerbot.commands.tx import tx
+from layerbot.commands.tip_deposits import claim_deposits
+from layerbot.commands.add_public_addrs import add_requester
 
 
 @click.group()
@@ -108,6 +110,8 @@ def bridge_scan():
 
 cli.add_command(test)
 cli.add_command(tx)
+cli.add_command(claim_deposits)
+cli.add_command(add_requester)
 
 if __name__ == '__main__':
     cli()
