@@ -57,7 +57,7 @@ def get_unclaimed_deposits():
     return unclaimed.sort_values('Deposit ID')
 
 @click.command()
-def claim_deposits():
+def tip_deposits():
     """Process tips for unclaimed bridge deposits"""
     # Get unclaimed deposits
     unclaimed = get_unclaimed_deposits()

@@ -13,8 +13,9 @@ from layerbot.bridge_info import setup_csv, get_existing_deposit_ids, save_depos
 from layerbot.query_layer import get_claimed_deposit_ids, generate_queryId, get_report_timestamp
 from web3 import Web3
 from layerbot.commands.test import test
-from layerbot.commands.tx import tx
-from layerbot.commands.tip_deposits import claim_deposits
+from layerbot.commands.bridge_request import bridge_request
+from layerbot.commands.claim_deposits import claim_deposits
+from layerbot.commands.tip_deposits import tip_deposits
 from layerbot.commands.add_public_addrs import add_requester
 
 
@@ -109,8 +110,9 @@ def bridge_scan():
             time.sleep(10)
 
 cli.add_command(test)
-cli.add_command(tx)
+cli.add_command(bridge_request)
 cli.add_command(claim_deposits)
+cli.add_command(tip_deposits)
 cli.add_command(add_requester)
 
 if __name__ == '__main__':

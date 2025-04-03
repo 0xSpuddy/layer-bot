@@ -55,5 +55,7 @@ logs/
 .env.production.local
 
 # Project specific
-bridge_deposits.csv 
+bridge_deposits.csv
+bridge_deposits_txs.csv
+requester_addresses.csv
 layerd
