@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import json
 import csv
 from datetime import datetime
-from layerbot.query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
+from layerbot.utils.query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
 
 def load_abi():
     """Load the ABI from the JSON file."""

@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 from layerbot.bridge_info import setup_csv, get_existing_deposit_ids, save_deposit_to_csv, load_abi
-from layerbot.query_layer import get_claimed_deposit_ids, generate_queryId, get_report_timestamp
+from layerbot.utils.query_layer import get_claimed_deposit_ids, generate_queryId, get_report_timestamp
 from web3 import Web3
 from layerbot.commands.test import test
 from layerbot.commands.bridge_request import bridge_request

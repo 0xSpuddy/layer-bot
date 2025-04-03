@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-from layerbot.query_layer import get_loya_balance, get_eth_balance, get_septrb_balance
+from layerbot.utils.query_layer import get_loya_balance, get_eth_balance, get_septrb_balance
 
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""

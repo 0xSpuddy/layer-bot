@@ -349,6 +349,74 @@ def get_septrb_balance(address):
     except Exception as e:
         print(f"Error querying SepTRB balance: {e}")
         return "0"
+    
+def get_data_before(query_id, timestamp):
+    """
+    Query the Layer chain for data before a specific timestamp.
+    Returns the aggregate report info before the timestamp.
+    """
+    try:
+        # Load environment variables
+        load_dotenv()
+        
+        # Get the Layer RPC URL
+        layer_rpc_url = os.getenv('LAYER_RPC_URL')
+        if not layer_rpc_url:
+            print("Error: LAYER_RPC_URL not found in .env file")
+            return None
+            
+        # Execute the layerd query command
+        cmd = [
+            './layerd', 
+            'query', 
+            'oracle', 
+            'get-data-before',
+            query_id,
+            str(timestamp),
+            '--node',
+            layer_rpc_url
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        # Parse the output
+        aggregate_data = {}
+        current_section = None
+        
+        for line in result.stdout.split('\n'):
+            line = line.strip()
+            
+            if line.startswith('aggregate:'):
+                current_section = 'aggregate'
+                continue
+                
+            if current_section == 'aggregate' and line:
+                if line.startswith('aggregate_power:'):
+                    aggregate_data['aggregate_power'] = line.split('"')[1]
+                elif line.startswith('aggregate_value:'):
+                    aggregate_data['aggregate_value'] = line.split('aggregate_value: ')[1]
+                elif line.startswith('height:'):
+                    aggregate_data['height'] = line.split('"')[1]
+                elif line.startswith('meta_id:'):
+                    aggregate_data['meta_id'] = line.split('"')[1]
+            
+            elif line.startswith('timestamp:'):
+                aggregate_data['timestamp'] = line.split('"')[1]
+        
+        return aggregate_data
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Error querying Layer chain: {e.stderr}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
+def get_total_reporter_power():
+    """
+    Query the Layer chain for the total reporter power.
+    Returns the total reporter power as a string.
+    """
 
 def main():
     # Example usage

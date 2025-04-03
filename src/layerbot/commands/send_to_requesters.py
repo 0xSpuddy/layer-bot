@@ -155,9 +155,9 @@ def send_to_requesters():
         else:
             click.echo("Skipping this address")
             
-        click.echo("Waiting 6 seconds before next transaction...")
+        click.echo("Waiting 2 seconds before next transaction...")
         import time
-        time.sleep(6)
+        time.sleep(2)
 
 if __name__ == '__main__':
     send_to_requesters()
