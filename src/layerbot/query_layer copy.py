@@ -6,7 +6,6 @@ import base64
 import os
 from dotenv import load_dotenv
 import csv
-from web3 import Web3
 
 def generate_queryId(deposit_id):
     """
@@ -280,74 +279,6 @@ def get_loya_balance(address):
         return "0"
     except Exception as e:
         print(f"Unexpected error: {e}")
-        return "0"
-
-def get_eth_balance(address):
-    """Query the ETH balance of an address."""
-    try:
-        # Load environment variables
-        load_dotenv()
-        
-        # Get the Ethereum RPC URL
-        eth_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-        if not eth_rpc_url:
-            print("Error: ETHEREUM_RPC_URL not found in .env file")
-            return "0"
-            
-        # Initialize Web3
-        w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
-        if not w3.is_connected():
-            print("Error: Could not connect to Ethereum RPC")
-            return "0"
-        
-        # Get ETH balance
-        balance_wei = w3.eth.get_balance(address)
-        balance_eth = w3.from_wei(balance_wei, 'ether')
-        return str(balance_eth)
-        
-    except Exception as e:
-        print(f"Error querying ETH balance: {e}")
-        return "0"
-
-def get_septrb_balance(address):
-    """Query the SepTRB token balance of an address."""
-    try:
-        load_dotenv()
-        
-        eth_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-        if not eth_rpc_url:
-            print("Error: ETHEREUM_RPC_URL not found in .env file")
-            return "0"
-            
-        w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
-        if not w3.is_connected():
-            print("Error: Could not connect to Ethereum RPC")
-            return "0"
-        
-        # SepTRB token contract address
-        token_address = "0x80fc34a2f9FfE86F41580F47368289C402DEc660"
-        
-        # ERC20 balanceOf function signature
-        abi = [
-            {
-                "constant": True,
-                "inputs": [{"name": "_owner", "type": "address"}],
-                "name": "balanceOf",
-                "outputs": [{"name": "balance", "type": "uint256"}],
-                "type": "function"
-            }
-        ]
-        
-        # Create contract instance
-        contract = w3.eth.contract(address=token_address, abi=abi)
-        
-        # Get token balance
-        balance_wei = contract.functions.balanceOf(address).call()
-        balance_token = w3.from_wei(balance_wei, 'ether')
-        return str(balance_token)
-        
-    except Exception as e:
-        print(f"Error querying SepTRB balance: {e}")
         return "0"
 
 def main():

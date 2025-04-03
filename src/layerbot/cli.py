@@ -17,6 +17,7 @@ from layerbot.commands.bridge_request import bridge_request
 from layerbot.commands.claim_deposits import claim_deposits
 from layerbot.commands.tip_deposits import tip_deposits
 from layerbot.commands.add_public_addrs import add_requester
+from layerbot.commands.send_to_requesters import send_to_requesters
 
 
 @click.group()
@@ -114,6 +115,7 @@ cli.add_command(bridge_request)
 cli.add_command(claim_deposits)
 cli.add_command(tip_deposits)
 cli.add_command(add_requester)
+cli.add_command(send_to_requesters)
 
 if __name__ == '__main__':
     cli()
