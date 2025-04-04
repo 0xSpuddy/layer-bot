@@ -103,7 +103,76 @@
             word-break: break-all;
             color: #00cc7a;
         }
+
+        .expandable-row {
+            cursor: pointer;
+        }
+
+        .address-details {
+            display: none;
+            background-color: #1f1f1f;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 0;
+            border-top: 1px solid #2a2a2a;
+        }
+
+        .expanded + .details-row .address-details {
+            display: block;
+        }
+
+        .details-row {
+            display: none;
+        }
+
+        .expanded + .details-row {
+            display: table-row;
+        }
+
+        /* Update hover effect for clickable rows */
+        tr.expandable-row:hover {
+            background-color: #2a2a2a;
+            transition: background-color 0.2s ease;
+        }
+
+        /* Animation for expanding/collapsing */
+        .address-details {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+        }
+
+        /* Styling for the expand/collapse indicator */
+        .expand-indicator {
+            display: inline-block;
+            margin-right: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        .expanded .expand-indicator {
+            transform: rotate(90deg);
+        }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('.expandable-row');
+            
+            rows.forEach(row => {
+                row.addEventListener('click', function() {
+                    // Toggle the expanded class
+                    this.classList.toggle('expanded');
+                    
+                    // Update the expand indicator
+                    const indicator = this.querySelector('.expand-indicator');
+                    if (this.classList.contains('expanded')) {
+                        indicator.textContent = '►';
+                    } else {
+                        indicator.textContent = '▼';
+                    }
+                });
+            });
+        });
+    </script>
 </head>
 <body>
     <h1>Tellor Bridge Deposits</h1>
@@ -112,33 +181,43 @@
             <thead>
                 <tr>
                     <th>Deposit ID</th>
-                    <th>Addresses</th>
                     <th>Amount (ETH)</th>
                     <th>Tip (ETH)</th>
                     <th>Block Height</th>
                     <th>Report Timestamp</th>
                     <th>Claimed</th>
-                    <th>Query Data</th>
                 </tr>
             </thead>
             <tbody>
                 {% for deposit in deposits %}
-                <tr {% if deposit['ready_to_claim'] %}class="ready-to-claim"{% elif deposit['invalid_recipient'] %}class="invalid-recipient"{% endif %}>
-                    <td>{{ deposit['Deposit ID'] }}</td>
-                    <td class="address-container">
-                        <span class="address-label">Sender:</span>
-                        <span class="address">{{ deposit['Sender'] }}</span>
-                        <span class="address-label">Recipient:</span>
-                        <span class="address">{{ deposit['Recipient'] }}</span>
-                        <span class="address-label">Query ID:</span>
-                        <span class="address">{{ deposit['Query ID'] }}</span>
-                    </td>
+                <!-- Main row -->
+                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %}">
+                    <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
                     <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
                     <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
                     <td>{{ deposit['Block Height'] }}</td>
                     <td>{{ deposit['Report Timestamp']|default('No Aggregate Yet') }}</td>
                     <td>{{ deposit['Claimed'] }}</td>
-                    <td class="address">{{ deposit['Query Data'] }}</td>
+                </tr>
+                <!-- Details row -->
+                <tr class="details-row">
+                    <td colspan="6">
+                        <div class="address-details">
+                            <div class="address-container">
+                                <span class="address-label">Sender:</span>
+                                <span class="address">{{ deposit['Sender'] }}</span>
+                                
+                                <span class="address-label">Recipient:</span>
+                                <span class="address">{{ deposit['Recipient'] }}</span>
+                                
+                                <span class="address-label">Query ID:</span>
+                                <span class="address">{{ deposit['Query ID'] }}</span>
+                                
+                                <span class="address-label">Query Data:</span>
+                                <span class="address">{{ deposit['Query Data'] }}</span>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
