@@ -3,79 +3,146 @@
 <head>
     <title>Bridge Deposits</title>
     <style>
+        body {
+            background-color: #0a0a0a;  /* Darker background */
+            color: #00ff9d;  /* Bright green text */
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-weight: 500;  /* Slightly bolder base text */
+        }
+
+        h1 {
+            color: #00ff9d;  /* Match the green theme */
+            margin-bottom: 20px;
+            font-weight: 700;  /* Bolder heading */
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            background-color: #1a1a1a;  /* Darker table background */
+            border-radius: 8px;
+            overflow: hidden;
         }
+
         th, td {
-            padding: 8px;
+            padding: 12px;
             text-align: left;
-            border: 1px solid #ddd;
+            border: 1px solid #2a2a2a;  /* Darker borders */
             vertical-align: top;
+            font-weight: 500;  /* Bolder text */
         }
+
         th {
-            background-color: #f2f2f2;
+            background-color: #202020;  /* Darker header */
+            color: #00ff9d;  /* Green headers */
+            font-weight: 700;  /* Even bolder headers */
         }
+
+        tr {
+            background-color: #1a1a1a;  /* Darker rows */
+        }
+
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #222222;  /* Darker alternating rows */
         }
+
         tr:hover {
-            background-color: #f5f5f5;
+            background-color: #2a2a2a;  /* Darker hover state */
         }
+
         .address {
             font-family: monospace;
             font-size: 0.9em;
             display: block;
             margin: 2px 0;
+            color: #00cc7a;  /* Slightly darker green for addresses */
+            font-weight: 600;  /* Bolder addresses */
         }
+
         .address-label {
-            color: #666;
+            color: #009958;  /* Darker green for labels */
             font-size: 0.8em;
             display: block;
             margin-top: 4px;
+            font-weight: 500;  /* Bolder labels */
         }
+
         .address-container {
             min-width: 350px;
+        }
+
+        .ready-to-claim {
+            background-color: rgba(0, 102, 51, 0.4) !important;  /* Darker green background */
+        }
+
+        .ready-to-claim:hover {
+            background-color: rgba(0, 102, 51, 0.6) !important;  /* Slightly lighter on hover */
+        }
+
+        .invalid-recipient {
+            background-color: rgba(102, 0, 0, 0.4) !important;  /* Darker red background */
+        }
+
+        .invalid-recipient:hover {
+            background-color: rgba(102, 0, 0, 0.6) !important;  /* Slightly lighter on hover */
+        }
+
+        /* Add some subtle shadows for depth */
+        .table-container {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);  /* Darker shadow */
+            border-radius: 8px;
+            overflow: auto;
+        }
+
+        td .query-data {
+            font-family: monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+            color: #00cc7a;
         }
     </style>
 </head>
 <body>
-    <h1>Bridge Deposits</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Scan Time</th>
-                <th>Deposit ID</th>
-                <th>Addresses</th>
-                <th>Amount (ETH)</th>
-                <th>Tip (ETH)</th>
-                <th>Block Height</th>
-                <th>Report Timestamp</th>
-                <th>Claimed</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for deposit in deposits %}
-            <tr>
-                <td>{{ deposit['Timestamp'] }}</td>
-                <td>{{ deposit['Deposit ID'] }}</td>
-                <td class="address-container">
-                    <span class="address-label">Sender:</span>
-                    <span class="address">{{ deposit['Sender'] }}</span>
-                    <span class="address-label">Recipient:</span>
-                    <span class="address">{{ deposit['Recipient'] }}</span>
-                    <span class="address-label">Query ID:</span>
-                    <span class="address">{{ deposit['Query ID'] }}</span>
-                </td>
-                <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
-                <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
-                <td>{{ deposit['Block Height'] }}</td>
-                <td>{{ deposit['Report Timestamp']|default('No Aggregate Yet') }}</td>
-                <td>{{ deposit['Claimed'] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h1>Tellor Bridge Deposits</h1>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Deposit ID</th>
+                    <th>Addresses</th>
+                    <th>Amount (ETH)</th>
+                    <th>Tip (ETH)</th>
+                    <th>Block Height</th>
+                    <th>Report Timestamp</th>
+                    <th>Claimed</th>
+                    <th>Query Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deposit in deposits %}
+                <tr {% if deposit['ready_to_claim'] %}class="ready-to-claim"{% elif deposit['invalid_recipient'] %}class="invalid-recipient"{% endif %}>
+                    <td>{{ deposit['Deposit ID'] }}</td>
+                    <td class="address-container">
+                        <span class="address-label">Sender:</span>
+                        <span class="address">{{ deposit['Sender'] }}</span>
+                        <span class="address-label">Recipient:</span>
+                        <span class="address">{{ deposit['Recipient'] }}</span>
+                        <span class="address-label">Query ID:</span>
+                        <span class="address">{{ deposit['Query ID'] }}</span>
+                    </td>
+                    <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
+                    <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
+                    <td>{{ deposit['Block Height'] }}</td>
+                    <td>{{ deposit['Report Timestamp']|default('No Aggregate Yet') }}</td>
+                    <td>{{ deposit['Claimed'] }}</td>
+                    <td class="address">{{ deposit['Query Data'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html> 

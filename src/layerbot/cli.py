@@ -18,6 +18,7 @@ from layerbot.commands.claim_deposits import claim_deposits
 from layerbot.commands.tip_deposits import tip_deposits
 from layerbot.commands.add_public_addrs import add_requester
 from layerbot.commands.send_to_requesters import send_to_requesters
+from .commands.bridge_scan import bridge_scan
 
 
 @click.group()
@@ -26,7 +27,7 @@ def cli():
     pass
 
 @cli.command()
-def bridge_scan():
+def bridge_monitor():
     """Monitor bridge deposits and track their status"""
     load_dotenv()
     
@@ -116,6 +117,10 @@ cli.add_command(claim_deposits)
 cli.add_command(tip_deposits)
 cli.add_command(add_requester)
 cli.add_command(send_to_requesters)
+cli.add_command(bridge_scan)
+
+def create_cli():
+    return cli()
 
 if __name__ == '__main__':
-    cli()
+    create_cli()

@@ -18,7 +18,7 @@ def setup_csv():
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
         return False
         
-    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Report Timestamp', 'Claimed']
+    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Report Timestamp', 'Claimed', 'Query Data']
     
     try:
         # Check if file exists and has headers
@@ -75,7 +75,7 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
         
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # Generate query ID for this deposit
+    # Generate query ID and data for this deposit
     query_info = generate_queryId(deposit_id)
     
     # Get the report timestamp from Layer chain
@@ -93,7 +93,8 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
             deposit_info[4],
             query_info['queryId'],
             report_timestamp or '',  # Use empty string if no timestamp found
-            'Yes' if claimed else 'No'
+            'Yes' if claimed else 'No',
+            query_info['queryData']  # Add Query Data
         ])
 
 def main():

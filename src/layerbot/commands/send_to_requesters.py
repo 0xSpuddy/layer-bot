@@ -40,6 +40,9 @@ def send_septrb(w3, contract, sender_address, private_key, recipient, amount):
             amount_wei
         ).estimate_gas({'from': sender_address})
         
+        # Add 20% buffer to gas estimate
+        gas_limit = int(gas_estimate * 1.2)
+        
         # Get gas price
         gas_price = w3.eth.gas_price
         
@@ -49,7 +52,7 @@ def send_septrb(w3, contract, sender_address, private_key, recipient, amount):
             amount_wei
         ).build_transaction({
             'chainId': w3.eth.chain_id,
-            'gas': gas_estimate,
+            'gas': gas_limit,  # Using buffered gas limit instead of estimate
             'gasPrice': gas_price,
             'nonce': nonce,
         })

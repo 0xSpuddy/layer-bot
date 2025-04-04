@@ -418,6 +418,134 @@ def get_total_reporter_power():
     Returns the total reporter power as a string.
     """
 
+def get_withdraw_tokens_txs():
+    """
+    Query the Layer chain for all withdraw tokens transactions and save them to a CSV file.
+    Returns a list of dictionaries containing transaction details.
+    """
+    try:
+        # Load environment variables
+        load_dotenv()
+        
+        # Get the Layer RPC URL and CSV filename from environment
+        layer_rpc_url = os.getenv('LAYER_RPC_URL')
+        csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV', 'bridge_withdrawals.csv')
+        
+        if not layer_rpc_url:
+            print("Error: LAYER_RPC_URL not found in .env file")
+            return []
+            
+        # Execute the layerd query command
+        cmd = ['./layerd', 'query', 'txs', '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'', '--node', layer_rpc_url]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        print("\nDebug - Command output received. Starting parse...")
+        
+        # Parse the output
+        transactions = []
+        current_tx = None
+        next_line_is_withdraw_id = False
+        next_line_is_amount = False
+        
+        for line in result.stdout.split('\n'):
+            line = line.strip()
+            print(f"\nProcessing line: '{line}'")
+            
+            # Start of new transaction
+            if line.startswith('- code: 0'):
+                print("Found new transaction")
+                if current_tx:
+                    print(f"Adding previous transaction: {current_tx}")
+                    transactions.append(current_tx)
+                current_tx = {}
+                continue
+            
+            # Check for withdraw_id
+            if line.startswith('key: withdraw_id'):
+                next_line_is_withdraw_id = True
+                continue
+            if next_line_is_withdraw_id:
+                if line.startswith('value:'):
+                    current_tx['withdraw_id'] = line.split('value: ')[1].strip()
+                    print(f"Found withdraw_id: {current_tx['withdraw_id']}")
+                next_line_is_withdraw_id = False
+                
+            # Check for amount
+            if line.startswith('amount:') and 'key:' not in line:
+                next_line_is_amount = True
+                continue
+            if next_line_is_amount:
+                if line.startswith('value:'):
+                    amount = line.split('value: ')[1].strip()
+                    # Remove 'loya' suffix if present
+                    current_tx['amount'] = amount.replace('loya', '').strip()
+                    print(f"Found amount: {current_tx['amount']}")
+                next_line_is_amount = False
+                
+            # Check for creator
+            if line.startswith('creator:'):
+                current_tx['creator'] = line.split('creator: ')[1].strip()
+                print(f"Found creator: {current_tx['creator']}")
+                
+            # Check for recipient
+            if line.startswith('recipient:'):
+                current_tx['recipient'] = line.split('recipient: ')[1].strip()
+                print(f"Found recipient: {current_tx['recipient']}")
+                
+            # Check for success (raw_log)
+            if line.startswith('raw_log:'):
+                current_tx['success'] = line.strip() == 'raw_log: ""'
+                print(f"Transaction success: {current_tx.get('success')}")
+                
+            # End of transaction
+            if line.startswith('txhash:'):
+                if current_tx:
+                    current_tx['txhash'] = line.split('txhash: ')[1].strip()
+                    print(f"Found txhash: {current_tx['txhash']}")
+                    print(f"Final transaction data: {current_tx}")
+                    transactions.append(current_tx.copy())
+                current_tx = None
+        
+        # Add the last transaction if it exists
+        if current_tx:
+            print(f"Adding final transaction: {current_tx}")
+            transactions.append(current_tx)
+        
+        print(f"\nParsing complete. Found {len(transactions)} transactions")
+        print("\nAll transactions found:")
+        for tx in transactions:
+            print(f"Transaction: {tx}")
+        
+        # Save to CSV
+        if transactions:
+            # Get all possible fields from all transactions
+            fieldnames = set()
+            for tx in transactions:
+                fieldnames.update(tx.keys())
+            fieldnames = sorted(list(fieldnames))
+            
+            with open(csv_file, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(transactions)
+                
+            print(f"Saved {len(transactions)} withdraw transactions to {csv_file}")
+            print(f"CSV columns: {fieldnames}")
+        else:
+            print("No withdrawal transactions found")
+            
+        return transactions
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Error querying Layer chain: {e.stderr}")
+        return []
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        print(f"Error details: {str(e)}")
+        import traceback
+        print(f"Stack trace: {traceback.format_exc()}")
+        return []
+
 def main():
     # Example usage
     deposit_id = 1
@@ -468,6 +596,11 @@ def main():
         writer.writerows(rows)
     
     print(f"Updated Claimed column in {base_csv}")
+
+    # Add new section for withdraw scan
+    print("\nScanning for withdrawals...")
+    withdrawals = get_withdraw_tokens_txs()
+    print(f"Found {len(withdrawals)} withdrawal transactions")
 
 if __name__ == "__main__":
     main()
