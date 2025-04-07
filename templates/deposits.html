@@ -151,6 +151,26 @@
         .expanded .expand-indicator {
             transform: rotate(90deg);
         }
+
+        /* Add new style for claimed deposits */
+        .claimed-row {
+            color: #75bda5 !important;  /* Dimmer green */
+            opacity: 0.7;  /* Slightly transparent */
+        }
+
+        /* Update hover state for claimed rows */
+        .claimed-row:hover {
+            opacity: 0.9;  /* More visible on hover */
+        }
+
+        /* Ensure claimed addresses are also dimmed */
+        .claimed-row .address {
+            color: #005544 !important;  /* Dimmer green for addresses */
+        }
+
+        .claimed-row .address-label {
+            color: #004433 !important;  /* Even dimmer green for labels */
+        }
     </style>
 
     <script>
@@ -183,25 +203,23 @@
                     <th>Deposit ID</th>
                     <th>Amount (ETH)</th>
                     <th>Tip (ETH)</th>
-                    <th>Block Height</th>
-                    <th>Report Timestamp</th>
+                    <th>Aggregate Timestamp</th>
                     <th>Claimed</th>
                 </tr>
             </thead>
             <tbody>
                 {% for deposit in deposits %}
                 <!-- Main row -->
-                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %}">
+                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
                     <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
                     <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
                     <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
-                    <td>{{ deposit['Block Height'] }}</td>
-                    <td>{{ deposit['Report Timestamp']|default('No Aggregate Yet') }}</td>
+                    <td>{{ deposit['Aggregate Timestamp']|default('No Aggregate Yet') }}</td>
                     <td>{{ deposit['Claimed'] }}</td>
                 </tr>
                 <!-- Details row -->
-                <tr class="details-row">
-                    <td colspan="6">
+                <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                    <td colspan="5">
                         <div class="address-details">
                             <div class="address-container">
                                 <span class="address-label">Sender:</span>

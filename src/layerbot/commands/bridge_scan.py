@@ -1,5 +1,7 @@
 import click
 from ..utils.query_layer import get_claim_deposit_txs, get_claimed_deposit_ids, get_withdraw_tokens_txs
+from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
+from ..bridge_info import main as scan_bridge_contract
 
 @click.group()
 def bridge_scan():
@@ -9,18 +11,27 @@ def bridge_scan():
 @bridge_scan.command()
 def deposits():
     """Scan for bridge deposit claims"""
-    print("\nFetching claim deposit transactions...")
-    transactions = get_claim_deposit_txs()
-    print(f"Found {len(transactions)} claim deposit transactions")
+    # 1. First scan the bridge contract for new deposits
+    print("\nScanning bridge contract for new deposits...")
+    scan_bridge_contract()
     
-    print("\nGetting claimed deposit IDs...")
-    claimed_ids = get_claimed_deposit_ids()
+    # 2. Then scan for claim deposit transactions
+    print("\nScanning claim transactions...")
+    get_claim_deposit_txs()
+    
+    # 4. Finally, get claimed deposit IDs to update final status
+    print("\nUpdating claimed status...")
+    get_claimed_deposit_ids()
+
+    # 3. Update Aggregate Timestamps from oracle data
+    print("\nUpdating Aggregate Timestamps...")
+    update_bridge_deposits_timestamps()
+    
     print("Done scanning deposits")
 
 @bridge_scan.command()
 def withdrawals():
     """Scan for bridge withdrawal transactions"""
     print("\nScanning for withdrawals...")
-    withdrawals = get_withdraw_tokens_txs()
-    print(f"Found {len(withdrawals)} withdrawal transactions")
+    get_withdraw_tokens_txs()
     print("Done scanning withdrawals") 

@@ -31,36 +31,10 @@ def generate_queryId(deposit_id):
 
 def get_report_timestamp(query_id):
     """
-    Query the Layer chain for the report timestamp using the layerd binary.
-    Returns the timestamp as a string, or None if the query fails.
+    This function is deprecated. Use query_bridge_reports.get_bridge_data_before instead.
     """
-    try:
-        # Load environment variables
-        load_dotenv()
-        
-        # Get the Layer RPC URL
-        layer_rpc_url = os.getenv('LAYER_RPC_URL')
-        if not layer_rpc_url:
-            print("Error: LAYER_RPC_URL not found in .env file")
-            return None
-            
-        # Execute the layerd query command with the RPC URL
-        cmd = ['./layerd', 'query', 'oracle', 'get-current-aggregate-report', query_id, '--node', layer_rpc_url]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        # Parse the output to get the timestamp
-        output_lines = result.stdout.split('\n')
-        for line in output_lines:
-            if line.startswith('timestamp:'):
-                return line.split('"')[1]
-        
-        return None
-    except subprocess.CalledProcessError as e:
-        print(f"Error querying Layer chain: {e.stderr}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return None
+    print("Warning: get_report_timestamp is deprecated. Use query_bridge_reports.get_bridge_data_before instead.")
+    return None
 
 def get_claim_deposit_txs():
     """
@@ -90,9 +64,6 @@ def get_claim_deposit_txs():
         cmd = ['./layerd', 'query', 'txs', '--query', 'message.action=\'/layer.bridge.MsgClaimDepositsRequest\'', '--node', layer_rpc_url]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
-        print("\nDebug - Raw Query Output:")
-        print(result.stdout)
-        
         # Parse the output
         transactions = []
         current_tx = None
@@ -100,10 +71,10 @@ def get_claim_deposit_txs():
         pending_deposit_ids = []
         last_raw_log = None
         
-        print("\nDebug - Parsing Process:")
+        # print("\nDebug - Parsing Process:")
         for line in result.stdout.split('\n'):
             line = line.strip()
-            print(f"\nProcessing line: '{line}'")
+            # print(f"\nProcessing line: '{line}'")
             
             # Check for raw_log line
             if line.startswith('raw_log:'):
@@ -439,7 +410,7 @@ def get_withdraw_tokens_txs():
         cmd = ['./layerd', 'query', 'txs', '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'', '--node', layer_rpc_url]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
-        print("\nDebug - Command output received. Starting parse...")
+        # print("\nDebug - Command output received. Starting parse...")
         
         # Parse the output
         transactions = []
@@ -557,7 +528,7 @@ def main():
     # Get the timestamp
     timestamp = get_report_timestamp(result['queryId'])
     if timestamp:
-        print(f"Report Timestamp: {timestamp}")
+        print(f"Aggregate Timestamp: {timestamp}")
     else:
         print("No timestamp found")
         

@@ -32,7 +32,7 @@ def bridge_monitor():
     load_dotenv()
     
     # Get configuration from environment variables
-    interval = int(os.getenv('BRIDGE_SCAN_INTERVAL', '60'))
+    interval = int(os.getenv('BRIDGE_SCAN_INTERVAL', '120'))
     csv_path = os.getenv('BRIDGE_DEPOSITS_CSV', 'bridge_deposits.csv')
     contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
     rpc_url = os.getenv('ETHEREUM_RPC_URL')

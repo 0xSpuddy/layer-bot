@@ -45,7 +45,7 @@ def claim_deposits():
             deposit_found = False
             for row in reader:
                 if row['Deposit ID'] == deposit_id:
-                    timestamp = row['Report Timestamp']
+                    timestamp = row['Aggregate Timestamp']
                     deposit_found = True
                     click.echo("\nDebug - Found deposit in CSV:")
                     click.echo(f"Timestamp: {timestamp}")
@@ -56,7 +56,7 @@ def claim_deposits():
             return
 
         if not timestamp:
-            click.echo(click.style(f"Error: No report timestamp found for deposit ID {deposit_id}", fg='red'))
+            click.echo(click.style(f"Error: No Aggregate Timestamp found for deposit ID {deposit_id}", fg='red'))
             return
 
     except FileNotFoundError:

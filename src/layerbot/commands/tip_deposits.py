@@ -21,7 +21,7 @@ def execute_tip_tx(query_data):
     cmd = [
         "./layerd", "tx", "oracle", "tip",
         query_data,
-        "100000loya",
+        "500000loya",
         "--from", account_name,
         "--fees", "12loya",
         "--gas", "300000",
@@ -48,11 +48,11 @@ def get_unclaimed_deposits():
         return pd.DataFrame()
         
     df = pd.read_csv(csv_file)
-    # Filter for unclaimed deposits AND non-empty Report Timestamp
+    # Filter for unclaimed deposits AND non-empty Aggregate Timestamp
     unclaimed = df[
         (df['Claimed'].str.lower() == 'no') & 
-        (df['Report Timestamp'].notna()) & 
-        (df['Report Timestamp'] != '')
+        (df['Aggregate Timestamp'].notna()) & 
+        (df['Aggregate Timestamp'] != '')
     ]
     return unclaimed.sort_values('Deposit ID')
 

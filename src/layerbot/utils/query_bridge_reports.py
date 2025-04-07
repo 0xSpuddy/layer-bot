@@ -1,0 +1,244 @@
+import os
+import csv
+import subprocess
+from dotenv import load_dotenv
+import base64
+import pandas as pd
+from datetime import datetime
+
+def parse_aggregate_response(output):
+    """Parse the layerd query response into a dictionary."""
+    aggregate_data = {}
+    current_section = None
+    
+    for line in output.split('\n'):
+        line = line.strip()
+        
+        if line.startswith('aggregate:'):
+            current_section = 'aggregate'
+            # continue
+            
+        if current_section == 'aggregate' and line:
+            if line.startswith('aggregate_power:'):
+                aggregate_data['aggregate_power'] = int(line.split('"')[1])
+            elif line.startswith('aggregate_reporter:'):
+                aggregate_data['aggregate_reporter'] = line.split('aggregate_reporter: ')[1]
+            elif line.startswith('aggregate_value:'):
+                aggregate_data['aggregate_value'] = line.split('aggregate_value: ')[1]
+            elif line.startswith('meta_id:'):
+                aggregate_data['meta_id'] = line.split('"')[1]
+        
+        if line.startswith('timestamp:'):
+            aggregate_data['timestamp'] = line.split('"')[1]
+    
+    return aggregate_data
+
+def query_layer_chain(query_id, timestamp):
+    """Execute layerd query command and return parsed response."""
+    try:
+        load_dotenv()
+        layer_rpc_url = os.getenv('LAYER_RPC_URL')
+        if not layer_rpc_url:
+            raise Exception("LAYER_RPC_URL not found in .env file")
+            
+        cmd = [
+            './layerd',
+            'query',
+            'oracle',
+            'get-data-before',
+            query_id,
+            str(timestamp),
+            '--node',
+            layer_rpc_url
+        ]
+        
+        print(f"Querying oracle: get-data-before {query_id} {timestamp}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print(f"Result: {result.stdout}")
+        return parse_aggregate_response(result.stdout)
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Error querying Layer chain: {e.stderr}")
+        return None
+    except Exception as e:
+        print(f"Error in query_layer_chain: {e}")
+        return None
+
+def save_aggregate_data(query_id, data):
+    """Save aggregate data to a CSV file named after the query_id."""
+    try:
+        filename = f"aggregate_data_{query_id[:10]}.csv"
+        headers = ['timestamp', 'aggregate_power', 'aggregate_reporter', 'aggregate_value', 'meta_id']
+        
+        if not os.path.exists(filename):
+            print(f"Creating new aggregate file: {filename}")
+            with open(filename, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=headers)
+                writer.writeheader()
+        
+        existing_timestamps = set()
+        with open(filename, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            existing_timestamps = {row['timestamp'] for row in reader}
+        
+        if data['timestamp'] not in existing_timestamps:
+            print(f"Adding new aggregate data: power={data['aggregate_power']}, timestamp={data['timestamp']}")
+            with open(filename, 'a', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=headers)
+                writer.writerow({
+                    'aggregate_power': data['aggregate_power'],
+                    'aggregate_reporter': data['aggregate_reporter'],
+                    'aggregate_value': data['aggregate_value'],
+                    'meta_id': data['meta_id'],
+                    'timestamp': data['timestamp']
+                })
+            
+        return True
+    except Exception as e:
+        print(f"Error saving aggregate data: {e}")
+        return False
+
+def get_best_timestamp(query_id):
+    """Get the timestamp with highest aggregate_power for a query_id."""
+    try:
+        filename = f"aggregate_data_{query_id[:10]}.csv"
+        if not os.path.exists(filename):
+            return None
+            
+        df = pd.read_csv(filename)
+        if df.empty:
+            return None
+            
+        best_row = df.loc[df['aggregate_power'].idxmax()]
+        print(f"Best timestamp for {query_id[:10]}...: {best_row['timestamp']} (power: {best_row['aggregate_power']})")
+        return best_row['timestamp']
+        
+    except Exception as e:
+        print(f"Error getting best timestamp: {e}")
+        return None
+
+def get_bridge_data_before(query_id):
+    """Query bridge data and find best timestamp based on aggregate power."""
+    try:
+        print(f"\nProcessing query_id: {query_id[:10]}...")
+        
+        # Initial query with max timestamp
+        max_timestamp = "10000000000000000000"
+        print(f"Initial query with max timestamp: {max_timestamp}")
+        current_data = query_layer_chain(query_id, max_timestamp)
+        print(f"Current Spud2 data: {current_data}")
+        if not current_data:
+            print(f"No initial data found for {query_id[:10]}...")
+            return None
+            
+        # Save initial data
+        save_aggregate_data(query_id, current_data)
+        
+        # Iterate up to 15 times using found timestamps
+        for i in range(14):
+            current_timestamp = current_data['timestamp']
+            print(f"Current Spud2 timestamp: {current_timestamp}")
+            current_data = query_layer_chain(query_id, current_timestamp)
+            print(f"Current Spud2 data: {current_data}")
+            if not current_data:
+                print(f"No more data found after {i+1} iterations")
+                break
+                
+            save_aggregate_data(query_id, current_data)
+        
+        # Get best timestamp based on aggregate_power
+        return get_best_timestamp(query_id)
+        
+    except Exception as e:
+        print(f"Error in get_bridge_data_before: {e}")
+        return None
+
+def update_bridge_deposits_timestamps():
+    """Update Aggregate Timestamp in bridge_deposits.csv based on aggregate data."""
+    try:
+        load_dotenv()
+        csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
+        if not csv_file:
+            raise Exception("BRIDGE_DEPOSITS_CSV not found in .env file")
+        
+        print(f"\nUpdating timestamps in {csv_file}")
+        
+        # Read the CSV file
+        df = pd.read_csv(csv_file)
+        print(f"Found {len(df)} total rows in bridge deposits file")
+        
+        updates = 0
+        # Process each unclaimed row
+        for index, row in df.iterrows():
+            if str(row['Claimed']).lower() != 'yes':
+                query_id = row['Query ID']
+                print(f"\nProcessing row {index}:")
+                print(f"Current Aggregate Timestamp: {row.get('Aggregate Timestamp', 'None')}")
+                print(f"Query ID: {query_id}")
+                
+                best_timestamp = get_bridge_data_before(query_id)
+                print(f"Found best timestamp: {best_timestamp}")
+                
+                if best_timestamp:
+                    print(f"Updating row {index} with timestamp {best_timestamp}")
+                    # Explicitly update the Aggregate Timestamp column
+                    df.loc[index, 'Aggregate Timestamp'] = best_timestamp
+                    updates += 1
+                    
+                    # Verify the update
+                    print(f"After update - Aggregate Timestamp: {df.loc[index, 'Aggregate Timestamp']}")
+        
+        # Save updated CSV
+        print(f"\nSaving updates to {csv_file}")
+        print(f"Total updates to make: {updates}")
+        
+        # Display a few rows before saving
+        print("\nFirst few rows to be saved:")
+        print(df[['Query ID', 'Aggregate Timestamp']].head())
+        
+        df.to_csv(csv_file, index=False)
+        print(f"Updated {updates} timestamps in bridge deposits file")
+        
+        # Verify the save
+        verification_df = pd.read_csv(csv_file)
+        print("\nVerification - First few rows after save:")
+        print(verification_df[['Query ID', 'Aggregate Timestamp']].head())
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error updating bridge deposits timestamps: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return False
+
+def main():
+    """Main function to run the script directly."""
+    try:
+        print("Starting bridge reports update process...")
+        
+        # Load environment variables
+        load_dotenv()
+        
+        # Check for required environment variables
+        csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
+        layer_rpc_url = os.getenv('LAYER_RPC_URL')
+        
+        if not csv_file or not layer_rpc_url:
+            print("Error: Required environment variables not found")
+            print("Please ensure BRIDGE_DEPOSITS_CSV and LAYER_RPC_URL are set in .env")
+            return
+            
+        # Run the update process
+        if update_bridge_deposits_timestamps():
+            print("\nBridge reports update completed successfully")
+        else:
+            print("\nBridge reports update failed")
+            
+    except Exception as e:
+        print(f"\nError in main process: {e}")
+        import traceback
+        print(traceback.format_exc())
+
+if __name__ == "__main__":
+    main()

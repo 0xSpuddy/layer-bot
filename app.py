@@ -11,7 +11,7 @@ def show_deposits():
     
     # Convert timestamp columns to more readable format
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df['Report Timestamp'] = pd.to_numeric(df['Report Timestamp'], errors='coerce')
+    df['Aggregate Timestamp'] = pd.to_numeric(df['Aggregate Timestamp'], errors='coerce')
     
     # Convert the large numbers to ETH format (divide by 10^18)
     df['Amount'] = df['Amount'].apply(lambda x: float(x) / 1e18)
@@ -24,8 +24,8 @@ def show_deposits():
     # Ready to claim status (green)
     df['ready_to_claim'] = (
         (df['Claimed'].fillna('no').str.lower() == 'no') & 
-        (df['Report Timestamp'].notna()) & 
-        ((current_time - df['Report Timestamp']) > twelve_hours)
+        (df['Aggregate Timestamp'].notna()) & 
+        ((current_time - df['Aggregate Timestamp']) > twelve_hours)
     )
     
     # Invalid recipient status (red)
@@ -33,11 +33,11 @@ def show_deposits():
     
     # Sort the dataframe:
     # 1. Unclaimed ('no' or empty) first
-    # 2. Then by timestamp (most recent first)
+    # 2. Then by Deposit ID in descending order
     df['Claimed'] = df['Claimed'].fillna('no')
     df = df.sort_values(
-        by=['Claimed', 'Timestamp'],
-        ascending=[True, False],  # True for Claimed (puts 'no' first), False for Timestamp (most recent first)
+        by=['Claimed', 'Deposit ID'],
+        ascending=[True, False],  # True for Claimed (puts 'no' first), False for Deposit ID (descending order)
     )
     
     # Convert DataFrame to list of dictionaries for template rendering

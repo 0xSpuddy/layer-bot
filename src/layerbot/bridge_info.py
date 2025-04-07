@@ -18,7 +18,7 @@ def setup_csv():
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
         return False
         
-    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Report Timestamp', 'Claimed', 'Query Data']
+    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Aggregate Timestamp', 'Claimed', 'Query Data']
     
     try:
         # Check if file exists and has headers
@@ -78,9 +78,6 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
     # Generate query ID and data for this deposit
     query_info = generate_queryId(deposit_id)
     
-    # Get the report timestamp from Layer chain
-    report_timestamp = get_report_timestamp(query_info['queryId'])
-    
     with open(csv_file, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -92,9 +89,9 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
             deposit_info[3],
             deposit_info[4],
             query_info['queryId'],
-            report_timestamp or '',  # Use empty string if no timestamp found
+            '',  # Aggregate Timestamp will be updated by bridge_scan
             'Yes' if claimed else 'No',
-            query_info['queryData']  # Add Query Data
+            query_info['queryData']
         ])
 
 def main():
@@ -202,9 +199,6 @@ def main():
                     # Generate query ID
                     query_info = generate_queryId(current_deposit_id)
                     
-                    # Get the report timestamp
-                    report_timestamp = get_report_timestamp(query_info['queryId'])
-                    
                     # Check if deposit has been claimed
                     is_claimed = str(current_deposit_id) in claimed_ids
                     print(f"spud Claimed: {is_claimed}")
@@ -218,8 +212,6 @@ def main():
                     print(f"Tip: {deposit_info[3]}")
                     print(f"Block Height: {deposit_info[4]}")
                     print(f"Query ID: {query_info['queryId']}")
-                    print(f"Report Timestamp: {report_timestamp if report_timestamp else 'Not found'}")
-                    print(f"Claimed: {'Yes' if is_claimed else 'No'}")
                     
                     # Save to CSV
                     save_deposit_to_csv(current_deposit_id, deposit_info, is_claimed)
