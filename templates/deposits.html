@@ -154,7 +154,7 @@
 
         /* Add new style for claimed deposits */
         .claimed-row {
-            color: #75bda5 !important;  /* Dimmer green */
+            color: #92e9cc !important;  /* Dimmer green */
             opacity: 0.7;  /* Slightly transparent */
         }
 
@@ -170,6 +170,51 @@
 
         .claimed-row .address-label {
             color: #004433 !important;  /* Even dimmer green for labels */
+        }
+
+        /* Add new styles for tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #00ff9d;
+            background-color: #1a1a1a;
+            border: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background-color: #2a2a2a;
+            color: #00ff9d;
+            font-weight: bold;
+        }
+
+        .tab:hover {
+            background-color: #2a2a2a;
+        }
+
+        .table-section {
+            display: none;
+        }
+
+        .table-section.active {
+            display: block;
+        }
+
+        /* Add styles for withdrawal status */
+        .success {
+            color: #00ff9d;
+        }
+
+        .failed {
+            color: #ff4444;
         }
     </style>
 
@@ -191,55 +236,108 @@
                     }
                 });
             });
+
+            // New tab switching logic
+            const tabs = document.querySelectorAll('.tab');
+            const sections = document.querySelectorAll('.table-section');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and sections
+                    tabs.forEach(t => t.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+
+                    // Add active class to clicked tab and corresponding section
+                    tab.classList.add('active');
+                    const targetSection = document.querySelector(tab.dataset.target);
+                    targetSection.classList.add('active');
+                });
+            });
         });
     </script>
 </head>
 <body>
-    <h1>Tellor Bridge Deposits</h1>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Deposit ID</th>
-                    <th>Amount (ETH)</th>
-                    <th>Tip (ETH)</th>
-                    <th>Aggregate Timestamp</th>
-                    <th>Claimed</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for deposit in deposits %}
-                <!-- Main row -->
-                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
-                    <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
-                    <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
-                    <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
-                    <td>{{ deposit['Aggregate Timestamp']|default('No Aggregate Yet') }}</td>
-                    <td>{{ deposit['Claimed'] }}</td>
-                </tr>
-                <!-- Details row -->
-                <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
-                    <td colspan="5">
-                        <div class="address-details">
-                            <div class="address-container">
-                                <span class="address-label">Sender:</span>
-                                <span class="address">{{ deposit['Sender'] }}</span>
-                                
-                                <span class="address-label">Recipient:</span>
-                                <span class="address">{{ deposit['Recipient'] }}</span>
-                                
-                                <span class="address-label">Query ID:</span>
-                                <span class="address">{{ deposit['Query ID'] }}</span>
-                                
-                                <span class="address-label">Query Data:</span>
-                                <span class="address">{{ deposit['Query Data'] }}</span>
+    <h1>Tellor Bridge Operations</h1>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" data-target="#deposits-section">Deposits</button>
+        <button class="tab" data-target="#withdrawals-section">Withdrawals</button>
+    </div>
+
+    <!-- Deposits Section -->
+    <div id="deposits-section" class="table-section active">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Deposit ID</th>
+                        <th>Amount (ETH)</th>
+                        <th>Tip (ETH)</th>
+                        <th>Aggregate Timestamp</th>
+                        <th>Claimed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deposit in deposits %}
+                    <!-- Main row -->
+                    <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                        <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
+                        <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
+                        <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
+                        <td>{{ deposit['Aggregate Timestamp']|default('No Aggregate Yet') }}</td>
+                        <td>{{ deposit['Claimed'] }}</td>
+                    </tr>
+                    <!-- Details row -->
+                    <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                        <td colspan="5">
+                            <div class="address-details">
+                                <div class="address-container">
+                                    <span class="address-label">Sender:</span>
+                                    <span class="address">{{ deposit['Sender'] }}</span>
+                                    
+                                    <span class="address-label">Recipient:</span>
+                                    <span class="address">{{ deposit['Recipient'] }}</span>
+                                    
+                                    <span class="address-label">Query ID:</span>
+                                    <span class="address">{{ deposit['Query ID'] }}</span>
+                                    
+                                    <span class="address-label">Query Data:</span>
+                                    <span class="address">{{ deposit['Query Data'] }}</span>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Withdrawals Section -->
+    <div id="withdrawals-section" class="table-section">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Withdraw ID</th>
+                        <th>Creator</th>
+                        <th>Recipient</th>
+                        <th>Transaction Hash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for withdrawal in withdrawals %}
+                    <tr>
+                        <td>{{ withdrawal['withdraw_id'] }}</td>
+                        <td class="creator_address">{{ withdrawal['creator'] }}</td>
+                        <td class="recipient_address">{{ withdrawal['recipient'] }}</td>
+                        <td class="txhash">{{ withdrawal['txhash'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html> 
