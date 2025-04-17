@@ -29,7 +29,7 @@ def parse_aggregate_response(output):
                 aggregate_data['meta_id'] = line.split('"')[1]
         
         if line.startswith('timestamp:'):
-            aggregate_data['timestamp'] = line.split('"')[1]
+            aggregate_data['timestamp'] = int(line.split('"')[1])
     
     return aggregate_data
 
@@ -163,8 +163,8 @@ def update_bridge_deposits_timestamps():
         
         print(f"\nUpdating timestamps in {csv_file}")
         
-        # Read the CSV file
-        df = pd.read_csv(csv_file)
+        # Read the CSV file with timestamps as strings to prevent float conversion
+        df = pd.read_csv(csv_file, dtype={'Aggregate Timestamp': str})
         print(f"Found {len(df)} total rows in bridge deposits file")
         
         updates = 0
@@ -177,18 +177,18 @@ def update_bridge_deposits_timestamps():
                 print(f"Query ID: {query_id}")
                 
                 best_timestamp = get_bridge_data_before(query_id)
-                print(f"Found best timestamp: {best_timestamp}")
+                print(f"Best timestamp: {best_timestamp}")
                 
                 if best_timestamp:
                     print(f"Updating row {index} with timestamp {best_timestamp}")
-                    # Explicitly update the Aggregate Timestamp column
-                    df.loc[index, 'Aggregate Timestamp'] = best_timestamp
+                    # Store timestamp as string to prevent float conversion
+                    df.loc[index, 'Aggregate Timestamp'] = str(best_timestamp)
                     updates += 1
                     
                     # Verify the update
                     print(f"After update - Aggregate Timestamp: {df.loc[index, 'Aggregate Timestamp']}")
         
-        # Save updated CSV
+        # Save updated CSV without allowing float conversion
         print(f"\nSaving updates to {csv_file}")
         print(f"Total updates to make: {updates}")
         
@@ -196,11 +196,12 @@ def update_bridge_deposits_timestamps():
         print("\nFirst few rows to be saved:")
         print(df[['Query ID', 'Aggregate Timestamp']].head())
         
+        # Save with timestamps as strings
         df.to_csv(csv_file, index=False)
         print(f"Updated {updates} timestamps in bridge deposits file")
         
         # Verify the save
-        verification_df = pd.read_csv(csv_file)
+        verification_df = pd.read_csv(csv_file, dtype={'Aggregate Timestamp': str})
         print("\nVerification - First few rows after save:")
         print(verification_df[['Query ID', 'Aggregate Timestamp']].head())
         

@@ -19,6 +19,8 @@ from layerbot.commands.tip_deposits import tip_deposits
 from layerbot.commands.add_public_addrs import add_requester
 from layerbot.commands.send_to_requesters import send_to_requesters
 from .commands.bridge_scan import bridge_scan
+from layerbot.commands.propose_dispute import propose_dispute
+
 
 
 @click.group()
@@ -118,6 +120,7 @@ cli.add_command(tip_deposits)
 cli.add_command(add_requester)
 cli.add_command(send_to_requesters)
 cli.add_command(bridge_scan)
+cli.add_command(propose_dispute)
 
 def create_cli():
     return cli()

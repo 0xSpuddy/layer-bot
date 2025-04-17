@@ -60,10 +60,20 @@ def get_claim_deposit_txs():
         # Create the transactions CSV filename
         txs_csv = base_csv.replace('.csv', '_txs.csv')
         
-        # Execute the layerd query command
-        cmd = ['./layerd', 'query', 'txs', '--query', 'message.action=\'/layer.bridge.MsgClaimDepositsRequest\'', '--node', layer_rpc_url]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        # Execute the layerd query command - Fixed command construction
+        cmd = [
+            './layerd',
+            'query',
+            'txs',
+            '--query',
+            'message.action=\'/layer.bridge.MsgClaimDepositsRequest\'',
+            '--node',
+            layer_rpc_url
+        ]
         
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print(f"spuddy cmd ressult check: {result}")
+
         # Parse the output
         transactions = []
         current_tx = None

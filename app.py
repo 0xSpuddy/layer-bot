@@ -6,12 +6,11 @@ app = Flask(__name__)
 
 @app.route('/')
 def show_deposits():
-    # Read the deposits CSV file
-    deposits_df = pd.read_csv('bridge_deposits.csv')
+    # Read the deposits CSV file with Aggregate Timestamp as string
+    deposits_df = pd.read_csv('bridge_deposits.csv', dtype={'Aggregate Timestamp': str})
     
     # Convert timestamp columns to more readable format
     deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'])
-    deposits_df['Aggregate Timestamp'] = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
     
     # Convert the large numbers to ETH format (divide by 10^18)
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
@@ -21,11 +20,14 @@ def show_deposits():
     current_time = datetime.now().timestamp()
     twelve_hours = 12 * 60 * 60  # 12 hours in seconds
     
+    # Convert Aggregate Timestamp to numeric only for comparison, keeping original string value
+    numeric_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
+    
     # Ready to claim status (green)
     deposits_df['ready_to_claim'] = (
         (deposits_df['Claimed'].fillna('no').str.lower() == 'no') & 
-        (deposits_df['Aggregate Timestamp'].notna()) & 
-        ((current_time - deposits_df['Aggregate Timestamp']) > twelve_hours)
+        (numeric_timestamps.notna()) & 
+        ((current_time - numeric_timestamps) > twelve_hours)
     )
     
     # Invalid recipient status (red)
