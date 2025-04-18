@@ -66,6 +66,8 @@
             margin: 2px 0;
             color: #00cc7a;  /* Slightly darker green for addresses */
             font-weight: 600;  /* Bolder addresses */
+            word-break: break-all;  /* Allow breaking of long words */
+            white-space: pre-wrap;  /* Preserve whitespace but allow wrapping */
         }
 
         .address-label {
@@ -74,10 +76,15 @@
             display: block;
             margin-top: 4px;
             font-weight: 500;  /* Bolder labels */
+            white-space: nowrap;  /* Prevent label wrapping */
         }
 
         .address-container {
-            min-width: 350px;
+            min-width: 0;  /* Remove minimum width constraint */
+            width: 100%;  /* Take full width of parent */
+            display: flex;
+            flex-direction: column;
+            gap: 8px;  /* Add some spacing between items */
         }
 
         .ready-to-claim {
@@ -129,6 +136,8 @@
             border-radius: 4px;
             margin: 0;
             border-top: 1px solid #2a2a2a;
+            width: 100%;  /* Ensure it takes full width of the table */
+            box-sizing: border-box;  /* Include padding in width calculation */
         }
 
         .expanded + .details-row .address-details {
