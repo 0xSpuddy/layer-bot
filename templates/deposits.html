@@ -346,7 +346,6 @@
                     <tr>
                         <th>Withdraw ID</th>
                         <th>Creator</th>
-                        <th>Recipient</th>
                         <th>Success</th>
                         <th>Claimed</th>
                     </tr>
@@ -357,15 +356,17 @@
                     <tr class="expandable-row {% if withdrawal['success'] %}success{% else %}failed{% endif %}">
                         <td><span class="expand-indicator">▼</span>{{ withdrawal['withdraw_id'] }}</td>
                         <td class="creator_address">{{ withdrawal['creator'] }}</td>
-                        <td class="recipient_address">{{ withdrawal['recipient'] }}</td>
                         <td>{{ withdrawal['success'] }}</td>
                         <td>{{ withdrawal['Claimed'] }}</td>
                     </tr>
                     <!-- Details row -->
                     <tr class="details-row {% if withdrawal['success'] %}success{% else %}failed{% endif %}">
-                        <td colspan="5">
+                        <td colspan="4">
                             <div class="address-details">
                                 <div class="address-container">
+                                    <span class="address-label">Recipient:</span>
+                                    <span class="address">{{ withdrawal['recipient'] }}</span>
+                                    
                                     <span class="address-label">Transaction Hash:</span>
                                     <span class="address">{{ withdrawal['txhash'] }}</span>
                                 </div>

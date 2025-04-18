@@ -79,9 +79,24 @@ def send_septrb(w3, contract, sender_address, private_key, recipient, amount):
         click.echo(f"Error sending tokens: {e}")
         return False
 
+def get_balances(w3, contract, address):
+    """Get ETH and TRB balances for an address."""
+    try:
+        # Get ETH balance
+        eth_balance = w3.from_wei(w3.eth.get_balance(address), 'ether')
+        
+        # Get TRB balance
+        trb_balance = w3.from_wei(contract.functions.balanceOf(address).call(), 'ether')
+        
+        return eth_balance, trb_balance
+    except Exception as e:
+        click.echo(f"Error getting balances for {address}: {e}")
+        return None, None
+
 @click.command()
-def send_to_requesters():
-    """Send SepTRB to addresses with zero balance."""
+@click.argument('addresses', type=str)
+def send_to_requesters(addresses):
+    """Send SepTRB to the provided comma-separated list of addresses."""
     # Load environment variables
     load_dotenv()
     
@@ -94,13 +109,6 @@ def send_to_requesters():
         click.echo("Error: Missing required environment variables (ETH_ADDRESS, ETH_PRIVATE_KEY, ETHEREUM_RPC_URL)")
         return
 
-    # First refresh all balances
-    click.echo("Refreshing all balances before proceeding...")
-    updated_df = refresh_balances()
-    if updated_df is None:
-        click.echo("Failed to refresh balances. Exiting.")
-        return
-    
     # Initialize Web3
     w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
     if not w3.is_connected():
@@ -131,36 +139,50 @@ def send_to_requesters():
     
     contract = w3.eth.contract(address=token_address, abi=abi)
     
-    # Get addresses with zero balance using the updated DataFrame
-    zero_balance_addresses = get_zero_balance_addresses(updated_df)
+    # Split the addresses and clean them up
+    address_list = [addr.strip() for addr in addresses.split(',')]
     
-    if not zero_balance_addresses:
-        click.echo("No addresses found with zero SepTRB balance")
+    if not address_list:
+        click.echo("No addresses provided")
         return
     
-    # Process each address
-    for entry in zero_balance_addresses:
-        address = entry['Address']
-        discord = entry['Discord'] if entry['Discord'] else 'No Discord'
-        x_handle = entry['X'] if entry['X'] else 'No X handle'
-        
-        click.echo(f"\nFound address with 0 SepTRB balance:")
-        click.echo(f"Address: {address}")
-        click.echo(f"Discord: {discord}")
-        click.echo(f"X: {x_handle}")
-        
-        if click.prompt("Send 99 SepTRB to this address? (Press Enter for yes, 'n' for no)", default='y').lower() != 'n':
+    # Validate all addresses first
+    valid_addresses = []
+    for address in address_list:
+        if not Web3.is_address(address):
+            click.echo(f"Invalid address format: {address}")
+        else:
+            valid_addresses.append(address)
+    
+    if not valid_addresses:
+        click.echo("No valid addresses provided")
+        return
+    
+    # Show balances for all valid addresses
+    click.echo("\nCurrent balances for each address:")
+    for address in valid_addresses:
+        eth_balance, trb_balance = get_balances(w3, contract, address)
+        if eth_balance is not None and trb_balance is not None:
+            click.echo(f"\nAddress: {address}")
+            click.echo(f"ETH Balance: {eth_balance:.6f}")
+            click.echo(f"TRB Balance: {trb_balance:.6f}")
+    
+    # Ask for confirmation to send to all addresses
+    click.echo(f"\nWill send 99 TRB to {len(valid_addresses)} addresses.")
+    if click.prompt("Proceed with sending TRB? (Press Enter for yes, 'n' for no)", default='y').lower() != 'n':
+        # Process each address
+        for address in valid_addresses:
+            click.echo(f"\nSending to {address}...")
             if send_septrb(w3, contract, eth_address, private_key, address, 99):
                 click.echo("Successfully sent tokens")
             else:
                 if not click.confirm("Transaction failed. Continue with next address?"):
                     break
-        else:
-            click.echo("Skipping this address")
-            
-        click.echo("Waiting 2 seconds before next transaction...")
-        import time
-        time.sleep(2)
+            click.echo("Waiting 2 seconds before next transaction...")
+            import time
+            time.sleep(2)
+    else:
+        click.echo("Operation cancelled")
 
 if __name__ == '__main__':
     send_to_requesters()
