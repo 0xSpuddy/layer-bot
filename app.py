@@ -18,7 +18,9 @@ def show_deposits():
         if pd.isna(most_recent_scan):
             most_recent_scan = "No valid timestamps found"
         else:
-            most_recent_scan = most_recent_scan.strftime('%Y-%m-%d %H:%M:%S UTC')
+            # Convert UTC to local time
+            most_recent_scan = most_recent_scan.tz_localize('UTC').tz_convert(None)
+            most_recent_scan = most_recent_scan.strftime('%Y-%m-%d %H:%M:%S')
     except Exception as e:
         print(f"Error processing timestamps: {e}")
         most_recent_scan = "Timestamp data unavailable"
