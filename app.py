@@ -71,10 +71,18 @@ def show_deposits():
     # Read the withdrawals CSV file
     try:
         withdrawals_df = pd.read_csv('bridge_withdrawals.csv')
-        # Clean up the withdraw_id column (remove quotes)
-        withdrawals_df['withdraw_id'] = withdrawals_df['withdraw_id'].str.replace('"', '')
-        # Convert withdraw_id to numeric for proper sorting
+        
+        # Handle withdraw_id column
+        if withdrawals_df['withdraw_id'].dtype == 'object':
+            # If it's a string, clean it up
+            withdrawals_df['withdraw_id'] = withdrawals_df['withdraw_id'].str.replace('"', '')
+        # Convert to numeric
         withdrawals_df['withdraw_id'] = pd.to_numeric(withdrawals_df['withdraw_id'])
+        
+        # Convert boolean columns to proper format
+        withdrawals_df['success'] = withdrawals_df['success'].astype(bool)
+        withdrawals_df['Claimed'] = withdrawals_df['Claimed'].astype(bool)
+        
         # Sort by withdraw_id in descending order
         withdrawals_df = withdrawals_df.sort_values('withdraw_id', ascending=False)
         withdrawals = withdrawals_df.to_dict('records')
