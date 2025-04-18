@@ -5,6 +5,7 @@ import json
 import csv
 from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_report_timestamp, get_claim_deposit_txs, get_claimed_deposit_ids
+import pandas as pd
 
 def load_abi():
     """Load the ABI from the JSON file."""
@@ -94,6 +95,79 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
             query_info['queryData']
         ])
 
+def check_withdrawal_status(w3, contract, withdraw_id):
+    """Check if a withdrawal has been claimed on Ethereum using the withdrawClaimed mapping."""
+    try:
+        return contract.functions.withdrawClaimed(withdraw_id).call()
+    except Exception as e:
+        print(f"Error checking withdrawal status for ID {withdraw_id}: {e}")
+        return False
+
+def update_withdrawal_status():
+    """Update the claimed status for all withdrawals in the CSV file."""
+    csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV')
+    if not csv_file:
+        print("Error: BRIDGE_WITHDRAWALS_CSV not found in .env file")
+        return
+
+    # Get the RPC URL from environment
+    rpc_url = os.getenv('ETHEREUM_RPC_URL')
+    if not rpc_url:
+        print("Error: ETHEREUM_RPC_URL not found in .env file")
+        return
+
+    try:
+        # Initialize Web3
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        
+        # Verify connection
+        if not w3.is_connected():
+            print("Error: Could not connect to the RPC endpoint")
+            return
+            
+        # Load contract ABI
+        abi = load_abi()
+        
+        # Create contract instance
+        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+        if not contract_address:
+            print("Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
+            return
+            
+        contract = w3.eth.contract(address=contract_address, abi=abi)
+        
+        # Read existing CSV file
+        if not os.path.exists(csv_file):
+            print(f"Withdrawals CSV file not found: {csv_file}")
+            return
+            
+        # Read the CSV file
+        df = pd.read_csv(csv_file)
+        
+        # Clean the withdraw_id column by removing quotes and converting to integer
+        df['withdraw_id'] = df['withdraw_id'].str.replace('"', '').astype(int)
+        
+        # Add 'Claimed' column if it doesn't exist
+        if 'Claimed' not in df.columns:
+            df['Claimed'] = False
+            
+        # Update claimed status for each withdrawal
+        for index, row in df.iterrows():
+            withdraw_id = row['withdraw_id']  # No need to convert to int again
+            is_claimed = check_withdrawal_status(w3, contract, withdraw_id)
+            df.at[index, 'Claimed'] = is_claimed
+            
+        # Reorder columns
+        column_order = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
+        df = df[column_order]
+            
+        # Save updated CSV
+        df.to_csv(csv_file, index=False)
+        print(f"Updated withdrawal status in {csv_file}")
+        
+    except Exception as e:
+        print(f"Error updating withdrawal status: {e}")
+
 def main():
     # Load environment variables
     load_dotenv()
@@ -156,6 +230,10 @@ def main():
         except Exception as e:
             print(f"Error creating contract instance: {e}")
             return
+        
+        # Update withdrawal status
+        print("\nUpdating withdrawal status...")
+        update_withdrawal_status()
         
         # 1. Get and print the most recent deposit ID
         print("\nAttempting to get deposit ID...")

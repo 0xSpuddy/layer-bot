@@ -1,7 +1,7 @@
 import click
 from ..utils.query_layer import get_claim_deposit_txs, get_claimed_deposit_ids, get_withdraw_tokens_txs
 from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
-from ..bridge_info import main as scan_bridge_contract
+from ..bridge_info import main as scan_bridge_contract, update_withdrawal_status
 
 @click.group()
 def bridge_scan():
@@ -34,4 +34,8 @@ def withdrawals():
     """Scan for bridge withdrawal transactions"""
     print("\nScanning for withdrawals...")
     get_withdraw_tokens_txs()
+    
+    # Update withdrawal status
+    update_withdrawal_status()
+    
     print("Done scanning withdrawals") 
