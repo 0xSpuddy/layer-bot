@@ -9,6 +9,23 @@ def show_deposits():
     # Read the deposits CSV file with Aggregate Timestamp as string
     deposits_df = pd.read_csv('bridge_deposits.csv', dtype={'Aggregate Timestamp': str})
     
+    # Get the most recent scan time with error handling
+    try:
+        # Convert Timestamp column to datetime, ignoring errors
+        deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'], errors='coerce')
+        # Get the maximum timestamp, excluding NaT (Not a Time) values
+        most_recent_scan = deposits_df['Timestamp'].max()
+        if pd.isna(most_recent_scan):
+            most_recent_scan = "No valid timestamps found"
+        else:
+            most_recent_scan = most_recent_scan.strftime('%Y-%m-%d %H:%M:%S UTC')
+    except Exception as e:
+        print(f"Error processing timestamps: {e}")
+        most_recent_scan = "Timestamp data unavailable"
+    
+    # Filter out deposit IDs 27 and 32
+    deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
+    
     # Convert timestamp columns to more readable format
     deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'])
     
@@ -29,6 +46,17 @@ def show_deposits():
         (numeric_timestamps.notna()) & 
         ((current_time - numeric_timestamps) > twelve_hours)
     )
+    
+    # Recent scan status (pale green)
+    if isinstance(most_recent_scan, str) and most_recent_scan != "No valid timestamps found" and most_recent_scan != "Timestamp data unavailable":
+        most_recent_scan_time = pd.to_datetime(most_recent_scan).timestamp()
+        deposits_df['recent_scan'] = (
+            (numeric_timestamps.notna()) & 
+            ((most_recent_scan_time - numeric_timestamps) <= twelve_hours) &
+            (deposits_df['Claimed'].fillna('no').str.lower() != 'yes')  # Exclude claimed deposits
+        )
+    else:
+        deposits_df['recent_scan'] = False
     
     # Invalid recipient status (red)
     deposits_df['invalid_recipient'] = ~deposits_df['Recipient'].fillna('').str.startswith('tellor1')
@@ -57,7 +85,7 @@ def show_deposits():
     # Convert DataFrames to list of dictionaries
     deposits = deposits_df.to_dict('records')
     
-    return render_template('deposits.html', deposits=deposits, withdrawals=withdrawals)
+    return render_template('deposits.html', deposits=deposits, withdrawals=withdrawals, most_recent_scan=most_recent_scan)
 
 if __name__ == '__main__':
     app.run(debug=True) 

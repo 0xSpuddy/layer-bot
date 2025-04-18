@@ -14,8 +14,14 @@
 
         h1 {
             color: #00ff9d;  /* Match the green theme */
-            margin-bottom: 20px;
+            margin-bottom: 10px;  /* Reduced margin to accommodate the new line */
             font-weight: 700;  /* Bolder heading */
+        }
+
+        .update-info {
+            color: #00cc7a;  /* Slightly darker green for the update info */
+            margin-bottom: 20px;
+            font-size: 0.9em;
         }
 
         table {
@@ -80,6 +86,14 @@
 
         .ready-to-claim:hover {
             background-color: rgba(0, 102, 51, 0.6) !important;  /* Slightly lighter on hover */
+        }
+
+        .recent-scan {
+            background-color: rgba(0, 102, 51, 0.2) !important;  /* Very pale green for recent scans */
+        }
+
+        .recent-scan:hover {
+            background-color: rgba(0, 102, 51, 0.3) !important;  /* Slightly darker on hover */
         }
 
         .invalid-recipient {
@@ -257,7 +271,8 @@
     </script>
 </head>
 <body>
-    <h1>Tellor Bridge Operations</h1>
+    <h1>Tellor Bridge Page</h1>
+    <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
 
     <!-- Tabs -->
     <div class="tabs">
@@ -281,7 +296,7 @@
                 <tbody>
                     {% for deposit in deposits %}
                     <!-- Main row -->
-                    <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                    <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
                         <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
                         <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
                         <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
