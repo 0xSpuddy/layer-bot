@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 import pandas as pd
 from datetime import datetime, timedelta
+from layerbot.utils.scan_time import get_last_scan_time
 
 app = Flask(__name__)
 
@@ -9,21 +10,10 @@ def show_deposits():
     # Read the deposits CSV file with Aggregate Timestamp as string
     deposits_df = pd.read_csv('bridge_deposits.csv', dtype={'Aggregate Timestamp': str})
     
-    # Get the most recent scan time with error handling
-    try:
-        # Convert Timestamp column to datetime, ignoring errors
-        deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'], errors='coerce')
-        # Get the maximum timestamp, excluding NaT (Not a Time) values
-        most_recent_scan = deposits_df['Timestamp'].max()
-        if pd.isna(most_recent_scan):
-            most_recent_scan = "No valid timestamps found"
-        else:
-            # Convert UTC to local time
-            most_recent_scan = most_recent_scan.tz_localize('UTC').tz_convert(None)
-            most_recent_scan = most_recent_scan.strftime('%Y-%m-%d %H:%M:%S')
-    except Exception as e:
-        print(f"Error processing timestamps: {e}")
-        most_recent_scan = "Timestamp data unavailable"
+    # Get the most recent scan time
+    most_recent_scan = get_last_scan_time()
+    if not most_recent_scan:
+        most_recent_scan = "No scan time available"
     
     # Filter out deposit IDs 27 and 32
     deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
@@ -50,7 +40,7 @@ def show_deposits():
     )
     
     # Recent scan status (pale green)
-    if isinstance(most_recent_scan, str) and most_recent_scan != "No valid timestamps found" and most_recent_scan != "Timestamp data unavailable":
+    if isinstance(most_recent_scan, str) and most_recent_scan != "No scan time available":
         most_recent_scan_time = pd.to_datetime(most_recent_scan).timestamp()
         deposits_df['recent_scan'] = (
             (numeric_timestamps.notna()) & 

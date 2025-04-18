@@ -2,6 +2,7 @@ import click
 from ..utils.query_layer import get_claim_deposit_txs, get_claimed_deposit_ids, get_withdraw_tokens_txs
 from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
 from ..bridge_info import main as scan_bridge_contract, update_withdrawal_status
+from ..utils.scan_time import update_scan_time
 
 @click.group()
 def bridge_scan():
@@ -27,6 +28,11 @@ def deposits():
     print("\nUpdating Aggregate Timestamps...")
     update_bridge_deposits_timestamps()
     
+    # Update the scan time
+    scan_time = update_scan_time()
+    if scan_time:
+        print(f"\nScan completed at: {scan_time}")
+    
     print("Done scanning deposits")
 
 @bridge_scan.command()
@@ -37,5 +43,10 @@ def withdrawals():
     
     # Update withdrawal status
     update_withdrawal_status()
+    
+    # Update the scan time
+    scan_time = update_scan_time()
+    if scan_time:
+        print(f"\nScan completed at: {scan_time}")
     
     print("Done scanning withdrawals") 

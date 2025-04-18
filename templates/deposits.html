@@ -276,6 +276,18 @@
                     targetSection.classList.add('active');
                 });
             });
+
+            // Convert UTC timestamp to local time
+            const updateInfo = document.querySelector('.update-info');
+            if (updateInfo) {
+                const text = updateInfo.textContent;
+                const utcMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC/);
+                if (utcMatch) {
+                    const utcTime = utcMatch[1];
+                    const localTime = new Date(utcTime + 'Z').toLocaleString();
+                    updateInfo.textContent = text.replace(utcTime + ' UTC', localTime);
+                }
+            }
         });
     </script>
 </head>
