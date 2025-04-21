@@ -18,6 +18,7 @@ from layerbot.commands.send_to_requesters import send_to_requesters
 from .commands.bridge_scan import bridge_scan, deposits, withdrawals
 from layerbot.commands.propose_dispute import propose_dispute
 from layerbot.commands import track_block_time
+from layerbot.commands.estimate_block_time import estimate
 
 @click.group()
 def cli():
@@ -46,24 +47,35 @@ def bridge_monitor():
     except Exception as e:
         click.echo(f"\nError in bridge monitor: {e}")
 
-@click.command('track-block-time')
-@click.option('--daemon', '-d', is_flag=True, help='Run as a daemon process')
-@click.option('--test', '-t', is_flag=True, help='Test if block time tracking works without starting the tracker')
+@click.command(name="track-block-time")
+@click.option("--daemon", is_flag=True, default=False, help="Run as a daemon, recording block time at regular intervals")
+@click.option("--test", is_flag=True, default=False, help="Test block time tracking without starting the tracker")
 def track_block_time_cmd(daemon, test):
-    """Track Layer network block time and save to CSV file"""
+    """Track block time and record averages to a CSV file"""
     if test:
-        click.echo("Testing block time tracking functionality...")
-        success = track_block_time.track(test=True)
-        if success:
-            click.echo("Block time tracking test successful!")
-            return
-        else:
-            click.echo("Block time tracking test failed. Please check the errors above.")
-            sys.exit(1)
+        click.echo("Testing block time tracking...")
+        return track_block_time(count=1)
     elif daemon:
-        track_block_time.track(daemon=True)
+        click.echo("Starting block time tracker daemon...")
+        return track_block_time(daemon=True)
     else:
-        track_block_time.track(daemon=False)
+        click.echo("Starting block time tracker...")
+        return track_block_time()
+
+@click.command(name="estimate-block")
+@click.argument("height", type=int, required=True)
+@click.option("--timezone", type=str, help="Timezone for estimated time (e.g. 'America/New_York', 'Europe/London')")
+def estimate_block_cmd(height, timezone):
+    """
+    Estimate when a future block height will be reached.
+    
+    Examples:
+    \b
+    layerbot estimate-block 1000000
+    layerbot estimate-block 1000000 --timezone "America/New_York" 
+    """
+    success = estimate(height, timezone)
+    return 0 if success else 1
 
 cli.add_command(test)
 cli.add_command(bridge_request)
@@ -75,6 +87,7 @@ cli.add_command(bridge_scan)
 cli.add_command(propose_dispute)
 cli.add_command(bridge_monitor)
 cli.add_command(track_block_time_cmd)
+cli.add_command(estimate_block_cmd)
 
 def create_cli():
     return cli()
