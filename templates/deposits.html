@@ -31,6 +31,33 @@
             font-size: 1em;
         }
 
+        /* Status key/legend styles */
+        .status-key {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+        
+        .key-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .key-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .key-indicator.ready-to-claim {
+            background-color: rgba(0, 102, 51, 0.4);  /* Match the ready-to-claim background */
+        }
+        
+        .key-text {
+            color: #00ff9d;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -302,6 +329,14 @@
     <h1>Tellor Bridge Monitor</h1>
     <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
     <div class="maintenance-alert">The layer bridge is currently down for maintenance. Please check back soon.</div>
+
+    <!-- Status key/legend -->
+    <div class="status-key">
+        <div class="key-item">
+            <span class="key-indicator ready-to-claim"></span>
+            <span class="key-text">Green highlighted rows are ready to claim (with enough reporter power)</span>
+        </div>
+    </div>
 
     <!-- Tabs -->
     <div class="tabs">
