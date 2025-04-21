@@ -24,6 +24,13 @@
             font-size: 0.9em;
         }
 
+        .maintenance-alert {
+            color: #ff0000;  /* Red text */
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-size: 1em;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -294,6 +301,7 @@
 <body>
     <h1>Tellor Bridge Monitor</h1>
     <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
+    <div class="maintenance-alert">The layer bridge is currently down for maintenance. Please check back soon.</div>
 
     <!-- Tabs -->
     <div class="tabs">
