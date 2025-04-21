@@ -2,6 +2,8 @@ from flask import Flask, render_template
 import pandas as pd
 from datetime import datetime, timedelta
 from layerbot.utils.scan_time import get_last_scan_time
+from layerbot.utils.block_time import get_block_time_stats
+from pathlib import Path
 
 app = Flask(__name__)
 
@@ -14,6 +16,9 @@ def show_deposits():
     most_recent_scan = get_last_scan_time()
     if not most_recent_scan:
         most_recent_scan = "No scan time available"
+    
+    # Get block time statistics
+    block_time_stats = get_block_time_stats()
     
     # Filter out deposit IDs 27 and 32
     deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
@@ -85,7 +90,11 @@ def show_deposits():
     # Convert DataFrames to list of dictionaries
     deposits = deposits_df.to_dict('records')
     
-    return render_template('deposits.html', deposits=deposits, withdrawals=withdrawals, most_recent_scan=most_recent_scan)
+    return render_template('deposits.html', 
+                          deposits=deposits, 
+                          withdrawals=withdrawals, 
+                          most_recent_scan=most_recent_scan,
+                          block_time_stats=block_time_stats)
 
 if __name__ == '__main__':
     app.run(debug=True) 

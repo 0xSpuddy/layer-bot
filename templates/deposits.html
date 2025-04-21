@@ -273,6 +273,57 @@
         .failed {
             color: #ff4444;
         }
+
+        /* Block time section styles */
+        .block-time-container {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .block-time-info {
+            color: #00cc7a;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            background-color: #222222;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .block-time-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            padding: 10px;
+            background-color: #222222;
+            border-radius: 6px;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #00ff9d;
+            min-width: 180px;
+        }
+
+        .stat-value {
+            color: #00cc7a;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+
+        /* Make h2 match our styling */
+        h2 {
+            color: #00ff9d;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
     </style>
 
     <script>
@@ -311,9 +362,9 @@
                 });
             });
 
-            // Convert UTC timestamp to local time
-            const updateInfo = document.querySelector('.update-info');
-            if (updateInfo) {
+            // Convert UTC timestamp to local time for all update-info elements
+            const updateInfoElements = document.querySelectorAll('.update-info');
+            updateInfoElements.forEach(updateInfo => {
                 const text = updateInfo.textContent;
                 const utcMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC/);
                 if (utcMatch) {
@@ -321,31 +372,33 @@
                     const localTime = new Date(utcTime + 'Z').toLocaleString();
                     updateInfo.textContent = text.replace(utcTime + ' UTC', localTime);
                 }
-            }
+            });
         });
     </script>
 </head>
 <body>
-    <h1>Tellor Bridge Monitor</h1>
-    <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
+    <h1>Tellor Monitor Dashboard</h1>
     <div class="maintenance-alert">The layer bridge is currently down for maintenance. Please check back soon.</div>
-
-    <!-- Status key/legend -->
-    <div class="status-key">
-        <div class="key-item">
-            <span class="key-indicator ready-to-claim"></span>
-            <span class="key-text">Green highlighted rows are ready to claim (with enough reporter power)</span>
-        </div>
-    </div>
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" data-target="#deposits-section">Deposits</button>
-        <button class="tab" data-target="#withdrawals-section">Withdrawals</button>
+        <button class="tab active" data-target="#deposits-section">Bridge Deposits</button>
+        <button class="tab" data-target="#withdrawals-section">Bridge Withdrawals</button>
+        <button class="tab" data-target="#block-time-section">Layer Network Block Time</button>
     </div>
 
     <!-- Deposits Section -->
     <div id="deposits-section" class="table-section active">
+        <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
+        
+        <!-- Status key/legend -->
+        <div class="status-key">
+            <div class="key-item">
+                <span class="key-indicator ready-to-claim"></span>
+                <span class="key-text">Green highlighted rows are ready to claim (with enough reporter power)</span>
+            </div>
+        </div>
+        
         <div class="table-container">
             <table>
                 <thead>
@@ -395,6 +448,7 @@
 
     <!-- Withdrawals Section -->
     <div id="withdrawals-section" class="table-section">
+        <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
         <div class="table-container">
             <table>
                 <thead>
@@ -429,6 +483,38 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Block Time Section -->
+    <div id="block-time-section" class="table-section">
+        <div class="block-time-container">
+            <h2>Layer Network Block Time Statistics</h2>
+            <div class="block-time-info">
+                <p>Block time is calculated by measuring the time between checks and dividing by the number of blocks created during that interval.</p>
+            </div>
+            <div class="block-time-stats">
+                <div class="stat-item">
+                    <div class="stat-label">5 Minute Average Block Time:</div>
+                    <div class="stat-value">{{ block_time_stats.five_min }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">30 Minute Average Block Time:</div>
+                    <div class="stat-value">{{ block_time_stats.thirty_min }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">60 Minute Average Block Time:</div>
+                    <div class="stat-value">{{ block_time_stats.sixty_min }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">24 Hour Average Block Time:</div>
+                    <div class="stat-value">{{ block_time_stats.day }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">7 Day Average Block Time:</div>
+                    <div class="stat-value">{{ block_time_stats.week }}</div>
+                </div>
+            </div>
         </div>
     </div>
 </body>
