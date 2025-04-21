@@ -260,21 +260,50 @@ def get_block_time_stats():
         day_ago = now - timedelta(days=1)
         week_ago = now - timedelta(days=7)
         
+        # Check data availability - determine the oldest record's timestamp
+        oldest_timestamp = df['timestamp'].min()
+        data_age = now - oldest_timestamp
+        data_age_minutes = data_age.total_seconds() / 60
+        data_age_hours = data_age_minutes / 60
+        data_age_days = data_age_hours / 24
+        
         # Filter data for each time period and calculate average
         stats = {}
         
         # Only use rows where avg_block_time is not null
         df_valid = df.dropna(subset=['avg_block_time'])
         
-        stats["five_min"] = calculate_average(df_valid, five_min_ago)
-        stats["thirty_min"] = calculate_average(df_valid, thirty_min_ago)
-        stats["sixty_min"] = calculate_average(df_valid, sixty_min_ago)
-        stats["day"] = calculate_average(df_valid, day_ago)
-        stats["week"] = calculate_average(df_valid, week_ago)
+        # Check and calculate stats for each time period
+        if data_age_minutes >= 5:
+            stats["five_min"] = calculate_average(df_valid, five_min_ago)
+        else:
+            stats["five_min"] = "Insufficient data (need at least 5 minutes of history)"
+            
+        if data_age_minutes >= 30:
+            stats["thirty_min"] = calculate_average(df_valid, thirty_min_ago)
+        else:
+            stats["thirty_min"] = "Insufficient data (need at least 30 minutes of history)"
+            
+        if data_age_minutes >= 60:
+            stats["sixty_min"] = calculate_average(df_valid, sixty_min_ago)
+        else:
+            stats["sixty_min"] = "Insufficient data (need at least 1 hour of history)"
+            
+        if data_age_hours >= 24:
+            stats["day"] = calculate_average(df_valid, day_ago)
+        else:
+            stats["day"] = f"Insufficient data (need 24 hours, have {data_age_hours:.1f} hours)"
+            
+        if data_age_days >= 7:
+            stats["week"] = calculate_average(df_valid, week_ago)
+        else:
+            stats["week"] = f"Insufficient data (need 7 days, have {data_age_days:.1f} days)"
         
         return stats
     except Exception as e:
         print(f"Error getting block time stats: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "five_min": f"Error: {str(e)}",
             "thirty_min": "Error",
@@ -286,9 +315,22 @@ def get_block_time_stats():
 def calculate_average(df, cutoff_time):
     """Calculate average block time for data after cutoff_time"""
     recent_df = df[df['timestamp'] >= cutoff_time]
+    
+    # Check if we have at least 2 data points in the time period
     if len(recent_df) < 2:
-        return "Insufficient data"
+        return "Insufficient data points in this time period"
+    
+    # Check if we have meaningful data
+    if recent_df['avg_block_time'].isna().all():
+        return "No valid measurements in this time period"
+    
+    # Calculate average of the block times
     average = recent_df['avg_block_time'].mean()
+    
+    # Check if the average makes sense
+    if pd.isna(average) or average <= 0:
+        return "Invalid average calculation"
+    
     return f"{average:.2f} seconds"
 
 if __name__ == "__main__":

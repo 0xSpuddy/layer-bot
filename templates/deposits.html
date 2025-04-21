@@ -324,6 +324,13 @@
             margin-bottom: 15px;
             font-weight: 700;
         }
+
+        .block-time-title {
+            color: #00ff9d;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
     </style>
 
     <script>
@@ -395,7 +402,7 @@
         <div class="status-key">
             <div class="key-item">
                 <span class="key-indicator ready-to-claim"></span>
-                <span class="key-text">Green highlighted rows are ready to claim (with enough reporter power)</span>
+                <span class="key-text">Green highlighted rows are out of time lock.</span>
             </div>
         </div>
         
@@ -489,26 +496,26 @@
     <!-- Block Time Section -->
     <div id="block-time-section" class="table-section">
         <div class="block-time-container">
-            <h3>Block Time Stats</h3>
+            <div class="block-time-title">Block Time Stats</div>
             <div class="block-time-stats">
                 <div class="stat-item">
-                    <div class="stat-label">5 Minute Average Block Time:</div>
+                    <div class="stat-label">5 Minute Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.five_min }}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">30 Minute Average Block Time:</div>
+                    <div class="stat-label">30 Minute Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.thirty_min }}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">60 Minute Average Block Time:</div>
+                    <div class="stat-label">60 Minute Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.sixty_min }}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">24 Hour Average Block Time:</div>
+                    <div class="stat-label">24 Hour Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.day }}</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">7 Day Average Block Time:</div>
+                    <div class="stat-label">7 Day Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.week }}</div>
                 </div>
             </div>
