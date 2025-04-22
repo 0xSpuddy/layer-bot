@@ -19,6 +19,7 @@ from .commands.bridge_scan import bridge_scan, deposits, withdrawals
 from layerbot.commands.propose_dispute import propose_dispute
 from layerbot.commands import track_block_time
 from layerbot.commands.estimate_block_time import estimate
+from layerbot.commands.manage_block_data import cli as manage_block_data_cli
 
 @click.group()
 def cli():
@@ -88,6 +89,7 @@ cli.add_command(propose_dispute)
 cli.add_command(bridge_monitor)
 cli.add_command(track_block_time_cmd)
 cli.add_command(estimate_block_cmd)
+cli.add_command(manage_block_data_cli, name="block-data-manage")
 
 def create_cli():
     return cli()

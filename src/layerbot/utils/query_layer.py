@@ -72,7 +72,6 @@ def get_claim_deposit_txs():
         ]
         
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        print(f"spuddy cmd ressult check: {result}")
 
         # Parse the output
         transactions = []

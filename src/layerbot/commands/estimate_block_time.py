@@ -24,9 +24,9 @@ def estimate_future_time(target_height):
     try:
         # Get current block height and time
         current_height, current_block_time = get_block_info()
-        print(f"Current block height spuddy: {current_height}")
-        print(f"Current block time spuddy: {current_block_time}")
-        print(f"Target block height spuddy: {target_height}")
+        print(f"Current block height: {current_height}")
+        print(f"Current block time: {current_block_time}")
+        print(f"Target block height: {target_height}")
         
         if current_height is None or current_block_time is None:
             print("Error: Could not get current block information")

@@ -8,6 +8,7 @@ import pandas as pd
 from pathlib import Path
 import re
 import shutil
+import argparse
 
 RPC_URL = os.getenv("LAYER_RPC_URL")
 CSV_FILE = "block_time.csv"
@@ -107,11 +108,88 @@ def ensure_csv_exists():
             writer = csv.writer(f)
             writer.writerow(['timestamp', 'block_height', 'block_time', 'time_since_last_check', 'avg_block_time'])
 
+def create_backup(reason="manual"):
+    """Create a timestamped backup of the block_time.csv file
+    
+    Args:
+        reason (str): Reason for the backup, included in the filename
+    
+    Returns:
+        str: Path to the backup file or None if backup failed
+    """
+    try:
+        if not Path(CSV_FILE).exists():
+            print(f"Cannot backup {CSV_FILE}: file does not exist")
+            return None
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f"{CSV_FILE}.{timestamp}.{reason}.bak"
+        
+        shutil.copy2(CSV_FILE, backup_file)
+        print(f"Created backup of {CSV_FILE} at {backup_file}")
+        return backup_file
+    except Exception as e:
+        print(f"Error creating backup: {e}")
+        return None
+
+def restore_from_backup(backup_file=None):
+    """Restore block_time.csv from a backup file
+    
+    Args:
+        backup_file (str): Path to the backup file to restore from.
+                           If None, uses the most recent backup.
+    
+    Returns:
+        bool: True if restore was successful, False otherwise
+    """
+    try:
+        if backup_file is None:
+            # Find the most recent backup
+            backups = list(Path('.').glob(f"{CSV_FILE}.*.bak"))
+            if not backups:
+                print("No backup files found")
+                return False
+                
+            # Sort by modification time (most recent first)
+            backups.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            backup_file = str(backups[0])
+            print(f"Using most recent backup: {backup_file}")
+        
+        if not Path(backup_file).exists():
+            print(f"Backup file {backup_file} does not exist")
+            return False
+            
+        # Create a backup of the current file before restoring
+        if Path(CSV_FILE).exists():
+            current_backup = f"{CSV_FILE}.before_restore.bak"
+            shutil.copy2(CSV_FILE, current_backup)
+            print(f"Created backup of current file at {current_backup}")
+        
+        # Restore from the backup
+        shutil.copy2(backup_file, CSV_FILE)
+        print(f"Successfully restored {CSV_FILE} from {backup_file}")
+        return True
+    except Exception as e:
+        print(f"Error restoring from backup: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def clean_old_records():
-    """Remove records older than MAX_AGE_DAYS"""
+    """Remove records older than MAX_AGE_DAYS
+    
+    This function trims the CSV file to keep only records newer than MAX_AGE_DAYS,
+    while preserving the historical data structure.
+    """
     try:
         if Path(CSV_FILE).exists():
+            # Create a backup of the original file
+            backup_file = create_backup(reason="before_cleaning")
+            
+            # Read the CSV file
             df = pd.read_csv(CSV_FILE)
+            original_len = len(df)
+            
             if not df.empty:
                 # Convert timestamp string to datetime
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
@@ -121,12 +199,30 @@ def clean_old_records():
                 
                 # Check if oldest record is more than MAX_AGE_DAYS old
                 if df['timestamp'].min() < cutoff_date:
-                    # If so, create a new file with only recent records
+                    # Filter to keep only recent records
                     recent_df = df[df['timestamp'] >= cutoff_date]
-                    recent_df.to_csv(CSV_FILE, index=False)
-                    print(f"Cleaned old records. Kept {len(recent_df)} recent records.")
+                    
+                    if not recent_df.empty:
+                        # Write back only the recent records
+                        recent_df.to_csv(CSV_FILE, index=False)
+                        removed_count = original_len - len(recent_df)
+                        print(f"Cleaned old records. Removed {removed_count} records older than {MAX_AGE_DAYS} days. Kept {len(recent_df)} recent records.")
+                    else:
+                        # If all records would be removed, keep the most recent MAX_RECORDS_TO_KEEP
+                        MAX_RECORDS_TO_KEEP = 100  # Define a minimum number of records to keep
+                        if len(df) > MAX_RECORDS_TO_KEEP:
+                            # Sort by timestamp (newest first) and keep the most recent records
+                            df_sorted = df.sort_values(by='timestamp', ascending=False)
+                            df_keep = df_sorted.head(MAX_RECORDS_TO_KEEP)
+                            df_keep.to_csv(CSV_FILE, index=False)
+                            print(f"All records were older than {MAX_AGE_DAYS} days. Kept the {MAX_RECORDS_TO_KEEP} most recent records.")
+                        else:
+                            # If we have fewer records than MAX_RECORDS_TO_KEEP, keep all of them
+                            print(f"All records are older than {MAX_AGE_DAYS} days, but keeping all {len(df)} existing records as the minimum dataset.")
     except Exception as e:
         print(f"Error cleaning old records: {e}")
+        import traceback
+        traceback.print_exc()
 
 def get_block_info():
     """Get current block information using layerd binary command"""
@@ -190,12 +286,50 @@ def get_block_info():
         traceback.print_exc()
         return None, None
 
+def check_for_duplicates():
+    """Check for and remove duplicate records from the CSV file"""
+    try:
+        if not Path(CSV_FILE).exists():
+            return
+            
+        df = pd.read_csv(CSV_FILE)
+        if df.empty:
+            return
+            
+        # Count rows before deduplication
+        original_count = len(df)
+        
+        # Convert timestamps to datetime for proper comparison
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
+        # Check for duplicates by block_height (which should be unique)
+        duplicates = df.duplicated(subset=['block_height'], keep='last')
+        duplicate_count = duplicates.sum()
+        
+        if duplicate_count > 0:
+            # Create a backup before removing duplicates
+            create_backup(reason="before_deduplication")
+            
+            # Keep the most recent entry for each block_height
+            df_deduped = df.drop_duplicates(subset=['block_height'], keep='last')
+            
+            # Sort by timestamp to ensure chronological order
+            df_deduped = df_deduped.sort_values(by='timestamp')
+            
+            # Write back the deduplicated data
+            df_deduped.to_csv(CSV_FILE, index=False)
+            
+            print(f"Removed {duplicate_count} duplicate records. Kept {len(df_deduped)} unique records.")
+    except Exception as e:
+        print(f"Error checking for duplicates: {e}")
+        import traceback
+        traceback.print_exc()
+
 def record_block_time():
     """Record block time to CSV file"""
     ensure_csv_exists()
-    clean_old_records()
     
-    # Get current block info
+    # Get current block info first
     height, block_time = get_block_info()
     if height is None or block_time is None:
         return
@@ -235,6 +369,12 @@ def record_block_time():
     print(f"Recorded block {height} at {current_time}")
     if time_since_last_check:
         print(f"Time since last check: {time_since_last_check:.2f} seconds")
+    
+    # After adding the new record, check for duplicates
+    check_for_duplicates()
+    
+    # Only after ensuring we have no duplicates, clean old records
+    clean_old_records()
 
 def get_block_time_stats():
     """Calculate block time statistics for different time periods"""
@@ -334,8 +474,78 @@ def calculate_average(df, cutoff_time):
     return f"{average:.2f} seconds"
 
 if __name__ == "__main__":
-    print(f"Starting block time tracker. Recording every {CHECK_INTERVAL} seconds.")
-    print(f"Using layerd binary at: {LAYERD_PATH}")
-    while True:
-        record_block_time()
-        time.sleep(CHECK_INTERVAL)
+    parser = argparse.ArgumentParser(description="Block time tracker utility")
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+    
+    # Run command
+    run_parser = subparsers.add_parser("run", help="Run the block time tracker")
+    run_parser.add_argument("--interval", type=int, default=CHECK_INTERVAL, 
+                          help=f"Interval between checks in seconds (default: {CHECK_INTERVAL})")
+    
+    # Backup command
+    backup_parser = subparsers.add_parser("backup", help="Create a backup of the CSV file")
+    backup_parser.add_argument("--reason", default="manual", help="Reason for the backup")
+    
+    # Restore command
+    restore_parser = subparsers.add_parser("restore", help="Restore from a backup")
+    restore_parser.add_argument("--file", help="Specific backup file to restore from (default: most recent)")
+    
+    # List backups command
+    list_parser = subparsers.add_parser("list-backups", help="List available backups")
+    
+    # Clean command
+    clean_parser = subparsers.add_parser("clean", help="Clean old records from the CSV file")
+    
+    # Stats command
+    stats_parser = subparsers.add_parser("stats", help="Show block time statistics")
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Execute the appropriate command
+    if args.command == "run":
+        check_interval = args.interval
+        print(f"Starting block time tracker. Recording every {check_interval} seconds.")
+        print(f"Using layerd binary at: {LAYERD_PATH}")
+        while True:
+            record_block_time()
+            time.sleep(check_interval)
+    
+    elif args.command == "backup":
+        create_backup(args.reason)
+    
+    elif args.command == "restore":
+        restore_from_backup(args.file)
+    
+    elif args.command == "list-backups":
+        backups = list(Path('.').glob(f"{CSV_FILE}.*.bak"))
+        if not backups:
+            print("No backups found")
+        else:
+            print(f"Found {len(backups)} backups:")
+            # Sort by modification time (newest first)
+            backups.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            for i, backup in enumerate(backups, 1):
+                size_kb = backup.stat().st_size / 1024
+                mod_time = datetime.fromtimestamp(backup.stat().st_mtime)
+                print(f"{i}. {backup} ({size_kb:.1f} KB) - {mod_time}")
+    
+    elif args.command == "clean":
+        clean_old_records()
+    
+    elif args.command == "stats":
+        stats = get_block_time_stats()
+        print("Block Time Statistics:")
+        print(f"  5 Minute Average: {stats['five_min']}")
+        print(f"  30 Minute Average: {stats['thirty_min']}")
+        print(f"  60 Minute Average: {stats['sixty_min']}")
+        print(f"  24 Hour Average: {stats['day']}")
+        print(f"  7 Day Average: {stats['week']}")
+    
+    else:
+        # Default behavior if no command is provided
+        print(f"Starting block time tracker. Recording every {CHECK_INTERVAL} seconds.")
+        print(f"Using layerd binary at: {LAYERD_PATH}")
+        while True:
+            record_block_time()
+            time.sleep(CHECK_INTERVAL)
