@@ -98,7 +98,7 @@ def ensure_csv_exists():
                 df.columns = expected_columns
                 df.to_csv(CSV_FILE, index=False)
                 print("Updated column names to match expected format.")
-                
+
     except Exception as e:
         # If there's any error with the existing file, create a new one
         print(f"Error reading existing CSV file: {e}")

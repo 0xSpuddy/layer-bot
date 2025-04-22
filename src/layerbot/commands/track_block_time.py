@@ -14,7 +14,7 @@ def test_connection():
     sys.path.append(str(script_path.parent.parent.parent))
     
     try:
-        from src.layerbot.utils.block_time import get_block_info, LAYERD_PATH
+        from layerbot.utils.block_time import get_block_info, LAYERD_PATH
         
         print(f"Using layerd binary at: {LAYERD_PATH}")
         

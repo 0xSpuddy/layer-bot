@@ -54,13 +54,13 @@ def track_block_time_cmd(daemon, test):
     """Track block time and record averages to a CSV file"""
     if test:
         click.echo("Testing block time tracking...")
-        return track_block_time(count=1)
+        return track_block_time.track(test=True)
     elif daemon:
         click.echo("Starting block time tracker daemon...")
-        return track_block_time(daemon=True)
+        return track_block_time.track(daemon=True)
     else:
         click.echo("Starting block time tracker...")
-        return track_block_time()
+        return track_block_time.track()
 
 @click.command(name="estimate-block")
 @click.argument("height", type=int, required=True)

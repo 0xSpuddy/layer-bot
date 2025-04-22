@@ -1,8 +1,11 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from datetime import datetime, timedelta
 from layerbot.utils.scan_time import get_last_scan_time
 from layerbot.utils.block_time import get_block_time_stats
+from layerbot.commands.estimate_block_time import estimate
+import subprocess
+import json
 from pathlib import Path
 
 app = Flask(__name__)
@@ -95,6 +98,67 @@ def show_deposits():
                           withdrawals=withdrawals, 
                           most_recent_scan=most_recent_scan,
                           block_time_stats=block_time_stats)
+
+@app.route('/estimate-block', methods=['POST'])
+def estimate_block():
+    try:
+        # Get the block height from the request
+        block_height = request.form.get('block_height')
+        
+        if not block_height or not block_height.isdigit():
+            return jsonify({'success': False, 'error': 'Invalid block height'})
+            
+        # Run the layerbot estimate function directly instead of spawning a subprocess
+        # This ensures we use the exact height provided by the user
+        from layerbot.commands.estimate_block_time import estimate
+        import io
+        import sys
+        
+        # Capture stdout to get the output
+        old_stdout = sys.stdout
+        new_stdout = io.StringIO()
+        sys.stdout = new_stdout
+        
+        # Run the estimation with the user's block height
+        success = estimate(int(block_height))
+        
+        # Get the captured output
+        output = new_stdout.getvalue()
+        
+        # Restore stdout
+        sys.stdout = old_stdout
+        
+        if not success:
+            return jsonify({'success': False, 'error': 'Estimation failed: ' + output})
+            
+        # Parse the output
+        lines = output.strip().split('\n')
+        result = {}
+        
+        # Extract the relevant information from the output
+        for line in lines:
+            if 'Block Time Estimation' in line or '===' in line:
+                continue
+                
+            if ':' in line:
+                key, value = line.split(':', 1)
+                result[key.strip()] = value.strip()
+        
+        # Add the user input to the response
+        return jsonify({
+            'success': True, 
+            'result': result, 
+            'raw_output': output,
+            'user_input': block_height
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False, 
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        })
 
 if __name__ == '__main__':
     app.run(debug=True) 

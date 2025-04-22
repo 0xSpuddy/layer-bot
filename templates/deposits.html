@@ -331,11 +331,119 @@
             font-weight: bold;
             font-size: 1.1em;
         }
+
+        /* Block Estimation Form Styles */
+        .block-estimation-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .block-estimation-form {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        #blockHeightInput {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #2a2a2a;
+            background-color: #222222;
+            color: #00ff9d;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .calculate-btn {
+            padding: 12px 20px;
+            background-color: #006633;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .calculate-btn:hover {
+            background-color: #008844;
+        }
+        
+        /* Estimation Results Styles */
+        .estimation-result {
+            margin-top: 20px;
+            min-height: 50px;
+        }
+        
+        .loading {
+            color: #00cc7a;
+            font-style: italic;
+        }
+        
+        .estimation-success {
+            background-color: rgba(0, 102, 51, 0.2);
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #00ff9d;
+        }
+        
+        .estimation-error {
+            background-color: rgba(102, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #ff0000;
+            color: #ff6666;
+        }
+        
+        .estimation-header {
+            color: #00ff9d;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 255, 157, 0.3);
+            padding-bottom: 5px;
+        }
+        
+        .estimation-item {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .estimation-label {
+            color: #00cc7a;
+            font-size: 0.9em;
+            margin-bottom: 4px;
+        }
+        
+        .estimation-value {
+            color: #00ff9d;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        @media (min-width: 768px) {
+            .estimation-item {
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .estimation-label {
+                min-width: 200px;
+            }
+        }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const rows = document.querySelectorAll('.expandable-row');
+            
+            // Clear the block height input field on page load
+            document.getElementById('blockHeightInput').value = '';
             
             rows.forEach(row => {
                 row.addEventListener('click', function() {
@@ -379,6 +487,94 @@
                     const localTime = new Date(utcTime + 'Z').toLocaleString();
                     updateInfo.textContent = text.replace(utcTime + ' UTC', localTime);
                 }
+            });
+
+            // Block time estimation functionality
+            document.getElementById('calculateBlockTime').addEventListener('click', function() {
+                const blockHeightInput = document.getElementById('blockHeightInput');
+                const blockHeight = blockHeightInput.value.trim();
+                const resultDiv = document.getElementById('blockEstimationResult');
+                
+                // Validate input
+                if (!blockHeight || isNaN(parseInt(blockHeight))) {
+                    resultDiv.innerHTML = '<div class="estimation-error">Please enter a valid block height</div>';
+                    return;
+                }
+                
+                // Show loading state
+                resultDiv.innerHTML = '<div class="loading">Calculating block time estimation for height ' + blockHeight + '...</div>';
+                
+                // Make the AJAX request
+                fetch('/estimate-block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'block_height=' + encodeURIComponent(blockHeight)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Format the response
+                        let resultHTML = '<div class="estimation-success">';
+                        resultHTML += '<div class="estimation-header">Block Time Estimation Results</div>';
+                        
+                        if (data.result['Current block height']) {
+                            resultHTML += `<div class="estimation-item">
+                                <span class="estimation-label">Current block height:</span>
+                                <span class="estimation-value">${data.result['Current block height']}</span>
+                            </div>`;
+                        }
+                        
+                        // Always use the user input for target height display
+                        resultHTML += `<div class="estimation-item">
+                            <span class="estimation-label">Target block height:</span>
+                            <span class="estimation-value">${data.user_input}</span>
+                        </div>`;
+                        
+                        // Clear the input field after successful calculation
+                        blockHeightInput.value = '';
+                        
+                        if (data.result['Blocks remaining']) {
+                            resultHTML += `<div class="estimation-item">
+                                <span class="estimation-label">Blocks remaining:</span>
+                                <span class="estimation-value">${data.result['Blocks remaining']}</span>
+                            </div>`;
+                        }
+                        
+                        if (data.result['Estimated time until target']) {
+                            resultHTML += `<div class="estimation-item">
+                                <span class="estimation-label">Estimated time until target:</span>
+                                <span class="estimation-value">${data.result['Estimated time until target']}</span>
+                            </div>`;
+                        }
+                        
+                        if (data.result['Estimated arrival (UTC)']) {
+                            resultHTML += `<div class="estimation-item">
+                                <span class="estimation-label">Estimated arrival (UTC):</span>
+                                <span class="estimation-value">${data.result['Estimated arrival (UTC)']}</span>
+                            </div>`;
+                        }
+                        
+                        // Add local time if available
+                        const localTimeKey = Object.keys(data.result).find(key => key.includes('Estimated arrival') && !key.includes('UTC'));
+                        if (localTimeKey && data.result[localTimeKey]) {
+                            resultHTML += `<div class="estimation-item">
+                                <span class="estimation-label">${localTimeKey}:</span>
+                                <span class="estimation-value">${data.result[localTimeKey]}</span>
+                            </div>`;
+                        }
+                        
+                        resultHTML += '</div>';
+                        resultDiv.innerHTML = resultHTML;
+                    } else {
+                        // Show error
+                        resultDiv.innerHTML = `<div class="estimation-error">Error: ${data.error || 'Unknown error occurred'}</div>`;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `<div class="estimation-error">Error: ${error.message}</div>`;
+                });
             });
         });
     </script>
@@ -517,6 +713,18 @@
                 <div class="stat-item">
                     <div class="stat-label">7 Day Average Block Time: </div>
                     <div class="stat-value">{{ block_time_stats.week }}</div>
+                </div>
+            </div>
+            
+            <!-- Block Height Estimation Form -->
+            <div class="block-estimation-container">
+                <div class="block-time-title">Estimate Future Block Time</div>
+                <div class="block-estimation-form">
+                    <input type="number" id="blockHeightInput" placeholder="Enter future block height" min="1">
+                    <button id="calculateBlockTime" class="calculate-btn">Calculate</button>
+                </div>
+                <div id="blockEstimationResult" class="estimation-result">
+                    <!-- Results will be displayed here -->
                 </div>
             </div>
         </div>
