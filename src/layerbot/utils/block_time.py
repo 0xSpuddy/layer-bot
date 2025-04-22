@@ -184,7 +184,7 @@ def clean_old_records():
     try:
         if Path(CSV_FILE).exists():
             # Create a backup of the original file
-            backup_file = create_backup(reason="before_cleaning")
+            # backup_file = create_backup(reason="before_cleaning")
             
             # Read the CSV file
             df = pd.read_csv(CSV_FILE)
