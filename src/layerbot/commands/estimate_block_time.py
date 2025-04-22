@@ -136,13 +136,28 @@ def estimate(height, timezone=None):
                 local_time = estimated_time.astimezone(local_tz)
                 timezone_name = local_tz.zone
             except pytz.exceptions.UnknownTimeZoneError:
-                print(f"Unknown timezone: {timezone}. Using system local time instead.")
-                local_time = estimated_time.astimezone()
-                timezone_name = datetime.datetime.now().astimezone().tzinfo
+                print(f"Unknown timezone: {timezone}. Using UTC time instead.")
+                local_time = estimated_time.astimezone(pytz.UTC)
+                timezone_name = "UTC"
         else:
-            # Use system local time
-            local_time = estimated_time.astimezone()
-            timezone_name = datetime.datetime.now().astimezone().tzinfo
+            # Use UTC as the default fallback
+            local_time = estimated_time.astimezone(pytz.UTC)
+            timezone_name = "UTC"
+            
+            # Try to get the system timezone for better user experience
+            try:
+                system_tz = datetime.datetime.now().astimezone().tzinfo
+                if hasattr(system_tz, 'zone'):
+                    timezone_name = system_tz.zone
+                    local_tz = pytz.timezone(timezone_name)
+                    local_time = estimated_time.astimezone(local_tz)
+                else:
+                    # Include system timezone offset if zone name isn't available
+                    offset = datetime.datetime.now().astimezone().strftime('%z')
+                    timezone_name = f"UTC{offset}"
+            except Exception:
+                # If anything goes wrong, just use UTC as fallback
+                pass
         
         # Format the output
         print("\n=== Block Time Estimation ===")

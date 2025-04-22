@@ -357,6 +357,21 @@
             font-size: 16px;
         }
         
+        .timezone-select {
+            padding: 12px;
+            border: 1px solid #2a2a2a;
+            background-color: #222222;
+            color: #00ff9d;
+            border-radius: 4px;
+            font-size: 16px;
+            min-width: 180px;
+        }
+        
+        .timezone-select option {
+            background-color: #222222;
+            color: #00ff9d;
+        }
+        
         .calculate-btn {
             padding: 12px 20px;
             background-color: #006633;
@@ -493,6 +508,8 @@
             document.getElementById('calculateBlockTime').addEventListener('click', function() {
                 const blockHeightInput = document.getElementById('blockHeightInput');
                 const blockHeight = blockHeightInput.value.trim();
+                const timezoneSelect = document.getElementById('timezoneSelect');
+                const timezone = timezoneSelect.value;
                 const resultDiv = document.getElementById('blockEstimationResult');
                 
                 // Validate input
@@ -504,13 +521,19 @@
                 // Show loading state
                 resultDiv.innerHTML = '<div class="loading">Calculating block time estimation for height ' + blockHeight + '...</div>';
                 
+                // Build request data
+                let formData = 'block_height=' + encodeURIComponent(blockHeight);
+                if (timezone) {
+                    formData += '&timezone=' + encodeURIComponent(timezone);
+                }
+                
                 // Make the AJAX request
                 fetch('/estimate-block', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: 'block_height=' + encodeURIComponent(blockHeight)
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -550,14 +573,51 @@
                         }
                         
                         if (data.result['Estimated arrival (UTC)']) {
+                            // Extract the UTC time
+                            const utcTimeStr = data.result['Estimated arrival (UTC)'];
+                            const utcTime = utcTimeStr.replace(' UTC', '');
+                            
+                            // Display UTC time
                             resultHTML += `<div class="estimation-item">
                                 <span class="estimation-label">Estimated arrival (UTC):</span>
-                                <span class="estimation-value">${data.result['Estimated arrival (UTC)']}</span>
+                                <span class="estimation-value">${utcTimeStr}</span>
                             </div>`;
+                            
+                            // Convert to browser's local time for display
+                            try {
+                                // Create a Date object from the UTC time
+                                const date = new Date(utcTime + 'Z'); // 'Z' ensures it's parsed as UTC
+                                
+                                if (!isNaN(date.getTime())) {
+                                    // Format the date in the user's local timezone
+                                    const localTimeStr = date.toLocaleString([], {
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: false,
+                                        timeZoneName: 'short'
+                                    });
+                                    
+                                    resultHTML += `<div class="estimation-item">
+                                        <span class="estimation-label">Estimated arrival (Your local time):</span>
+                                        <span class="estimation-value">${localTimeStr}</span>
+                                    </div>`;
+                                }
+                            } catch (e) {
+                                console.error("Error converting time:", e);
+                            }
                         }
                         
-                        // Add local time if available
-                        const localTimeKey = Object.keys(data.result).find(key => key.includes('Estimated arrival') && !key.includes('UTC'));
+                        // Use local time from backend if available and doesn't have UTC in the key
+                        const localTimeKey = Object.keys(data.result).find(key => 
+                            key.includes('Estimated arrival') && 
+                            !key.includes('UTC') && 
+                            !key.includes('Your local time')
+                        );
+                        
                         if (localTimeKey && data.result[localTimeKey]) {
                             resultHTML += `<div class="estimation-item">
                                 <span class="estimation-label">${localTimeKey}:</span>
@@ -721,6 +781,19 @@
                 <div class="block-time-title">Estimate Future Block Time</div>
                 <div class="block-estimation-form">
                     <input type="number" id="blockHeightInput" placeholder="Enter future block height" min="1">
+                    <select id="timezoneSelect" class="timezone-select">
+                        <option value="">Browser's local time</option>
+                        <option value="UTC">UTC</option>
+                        <option value="America/New_York">US Eastern</option>
+                        <option value="America/Chicago">US Central</option>
+                        <option value="America/Denver">US Mountain</option>
+                        <option value="America/Los_Angeles">US Pacific</option>
+                        <option value="Europe/London">UK/Ireland</option>
+                        <option value="Europe/Paris">Central Europe</option>
+                        <option value="Asia/Tokyo">Japan</option>
+                        <option value="Asia/Shanghai">China</option>
+                        <option value="Australia/Sydney">Australia (East)</option>
+                    </select>
                     <button id="calculateBlockTime" class="calculate-btn">Calculate</button>
                 </div>
                 <div id="blockEstimationResult" class="estimation-result">

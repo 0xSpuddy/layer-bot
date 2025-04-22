@@ -104,6 +104,7 @@ def estimate_block():
     try:
         # Get the block height from the request
         block_height = request.form.get('block_height')
+        timezone = request.form.get('timezone')  # Optional timezone parameter
         
         if not block_height or not block_height.isdigit():
             return jsonify({'success': False, 'error': 'Invalid block height'})
@@ -119,8 +120,8 @@ def estimate_block():
         new_stdout = io.StringIO()
         sys.stdout = new_stdout
         
-        # Run the estimation with the user's block height
-        success = estimate(int(block_height))
+        # Run the estimation with the user's block height and optional timezone
+        success = estimate(int(block_height), timezone)
         
         # Get the captured output
         output = new_stdout.getvalue()
@@ -149,7 +150,8 @@ def estimate_block():
             'success': True, 
             'result': result, 
             'raw_output': output,
-            'user_input': block_height
+            'user_input': block_height,
+            'timezone': timezone
         })
         
     except Exception as e:
