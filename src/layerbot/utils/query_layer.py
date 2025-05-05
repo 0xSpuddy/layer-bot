@@ -38,8 +38,15 @@ def get_report_timestamp(query_id):
 
 def get_claim_deposit_txs():
     """
-    Query the Layer chain for all claim deposit transactions and save them to a CSV file.
-    Returns a list of dictionaries containing txhash and deposit_ids for each transaction.
+    This function is now deprecated. Use get_claimed_deposit_ids() instead.
+    """
+    print("Warning: get_claim_deposit_txs is deprecated. Use get_claimed_deposit_ids instead.")
+    return []
+
+def get_claimed_deposit_ids():
+    """
+    Query the Layer chain to determine if deposits have been claimed.
+    Returns a set of successfully claimed deposit IDs.
     """
     try:
         # Load environment variables
@@ -49,168 +56,56 @@ def get_claim_deposit_txs():
         layer_rpc_url = os.getenv('LAYER_RPC_URL')
         if not layer_rpc_url:
             print("Error: LAYER_RPC_URL not found in .env file")
-            return []
+            return set()
             
         # Get the CSV file name from environment
         base_csv = os.getenv('BRIDGE_DEPOSITS_CSV')
         if not base_csv:
             print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
-            return []
-            
-        # Create the transactions CSV filename
-        txs_csv = base_csv.replace('.csv', '_txs.csv')
-        
-        # Execute the layerd query command - Fixed command construction
-        cmd = [
-            './layerd',
-            'query',
-            'txs',
-            '--query',
-            'message.action=\'/layer.bridge.MsgClaimDepositsRequest\'',
-            '--node',
-            layer_rpc_url
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-        # Parse the output
-        transactions = []
-        current_tx = None
-        parsing_deposit_ids = False
-        pending_deposit_ids = []
-        last_raw_log = None
-        
-        # print("\nDebug - Parsing Process:")
-        for line in result.stdout.split('\n'):
-            line = line.strip()
-            # print(f"\nProcessing line: '{line}'")
-            
-            # Check for raw_log line
-            if line.startswith('raw_log:'):
-                last_raw_log = line
-                print(f"Found raw_log line: {line}")
-                continue
-            
-            # Start parsing deposit IDs
-            if line.startswith('deposit_ids:'):
-                print("Found deposit_ids line, starting to parse IDs")
-                parsing_deposit_ids = True
-                pending_deposit_ids = []  # Reset pending deposit IDs
-                continue
-                
-            # Parse deposit IDs
-            if parsing_deposit_ids and line.startswith('-'):
-                print(f"Found deposit ID line: {line}")
-                try:
-                    deposit_id = line.split('"')[1]
-                    print(f"Extracted deposit ID: {deposit_id}")
-                    pending_deposit_ids.append(deposit_id)
-                    print(f"Current pending deposit IDs: {pending_deposit_ids}")
-                except Exception as e:
-                    print(f"Error parsing deposit ID: {e}")
-                    print(f"Line: {line}")
-            elif parsing_deposit_ids and not line.startswith('-'):
-                print("Ending deposit IDs parsing")
-                parsing_deposit_ids = False
-            
-            # Extract txhash
-            if line.startswith('txhash:'):
-                print(f"Found txhash line: {line}")
-                if current_tx:
-                    print(f"Adding previous transaction: {current_tx}")
-                    transactions.append(current_tx)
-                
-                # Determine success based on raw_log
-                success = last_raw_log == 'raw_log: ""' if last_raw_log else False
-                print(f"Transaction success: {success} (raw_log: {last_raw_log})")
-                
-                current_tx = {
-                    'txhash': line.split('txhash: ')[1].strip(),
-                    'deposit_ids': pending_deposit_ids,
-                    'success': success
-                }
-                print(f"Created new transaction: {current_tx}")
-                pending_deposit_ids = []  # Reset pending deposit IDs
-                last_raw_log = None  # Reset last_raw_log
-        
-        # Add the last transaction if it exists
-        if current_tx:
-            print(f"Adding final transaction: {current_tx}")
-            transactions.append(current_tx)
-        
-        print(f"\nFound {len(transactions)} transactions")
-        for tx in transactions:
-            print(f"Transaction: txhash={tx.get('txhash', 'N/A')}, deposit_ids={tx.get('deposit_ids', [])}, success={tx.get('success', False)}")
-        
-        # Save to CSV
-        with open(txs_csv, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['txhash', 'deposit_ids', 'success'])
-            writer.writeheader()
-            for tx in transactions:
-                # Convert deposit_ids list to string for CSV storage
-                tx['deposit_ids'] = ','.join(tx['deposit_ids'])
-                # Convert success boolean to yes/no string
-                tx['success'] = 'yes' if tx['success'] else 'no'
-                writer.writerow(tx)
-            
-        print(f"Saved {len(transactions)} claim deposit transactions to {txs_csv}")
-        return transactions
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error querying Layer chain: {e.stderr}")
-        return []
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return []
-
-def get_claimed_deposit_ids():
-    """
-    Read the transactions CSV and update the main CSV file with claimed status.
-    Returns a set of successfully claimed deposit IDs.
-    """
-    try:
-        # First get the latest transaction data
-        print("Getting latest claim deposit transactions...")
-        transactions = get_claim_deposit_txs()
-        if not transactions:
-            print("No transactions found")
             return set()
             
-        # Load environment variables
-        load_dotenv()
-        
-        # Get the CSV file names from environment
-        base_csv = os.getenv('BRIDGE_DEPOSITS_CSV')
-        if not base_csv:
-            print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
-            return set()
-            
-        # Create the transactions CSV filename
-        txs_csv = base_csv.replace('.csv', '_txs.csv')
-        
-        # Read the transactions CSV to get claimed status
-        claimed_status = {}  # deposit_id -> success status
-        with open(txs_csv, 'r') as f:
+        # Read all deposit IDs from CSV
+        deposit_ids = set()
+        with open(base_csv, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Split comma-separated deposit IDs
-                deposit_ids = row['deposit_ids'].split(',')
-                success = row['success']
-                # Record success status for each deposit ID
-                for deposit_id in deposit_ids:
-                    claimed_status[deposit_id] = success
+                deposit_ids.add(row['Deposit ID'])
         
-        print(f"Found claim status for {len(claimed_status)} deposit IDs")
+        # Query each deposit ID
+        claimed_ids = set()
+        for deposit_id in deposit_ids:
+            print(f"\nChecking deposit ID: {deposit_id}")
+            cmd = [
+                './layerd',
+                'query',
+                'bridge',
+                'get-deposit-claimed',
+                deposit_id,
+                '--node',
+                layer_rpc_url
+            ]
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                # Parse the output - expecting a simple true/false response
+                is_claimed = 'true' in result.stdout.lower()
+                if is_claimed:
+                    claimed_ids.add(deposit_id)
+                print(f"Deposit {deposit_id} claimed: {is_claimed}")
+            except subprocess.CalledProcessError as e:
+                print(f"Error querying deposit {deposit_id}: {e.stderr}")
+                continue
         
-        # Read the main CSV and update Claimed column
+        print(f"\nFound {len(claimed_ids)} claimed deposits")
+        
+        # Update the CSV file
         rows = []
         with open(base_csv, 'r') as f:
             reader = csv.DictReader(f)
             fieldnames = reader.fieldnames
             for row in reader:
-                deposit_id = row['Deposit ID']
-                # Update Claimed column based on transaction status
-                row['Claimed'] = claimed_status.get(deposit_id, 'no')
+                # Update Claimed column based on query results
+                row['Claimed'] = 'yes' if row['Deposit ID'] in claimed_ids else 'no'
                 rows.append(row)
         
         # Write back to CSV with updated Claimed column
@@ -220,15 +115,10 @@ def get_claimed_deposit_ids():
             writer.writerows(rows)
         
         print(f"Updated Claimed column in {base_csv}")
-        
-        # Return set of successfully claimed deposit IDs
-        claimed_ids = {deposit_id for deposit_id, success in claimed_status.items() if success == 'yes'}
-        print(f"Found {len(claimed_ids)} successfully claimed deposit IDs")
-        print(f"Claimed IDs: {claimed_ids}")
         return claimed_ids
         
     except Exception as e:
-        print(f"Error reading claimed deposit IDs: {e}")
+        print(f"Error checking claimed deposit IDs: {e}")
         return set()
 
 def get_loya_balance(address):

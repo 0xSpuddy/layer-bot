@@ -48,7 +48,7 @@ def propose_dispute():
             '666999666999loya',
             'false',
             '--from', account_name,
-            '--gas', '500000',
+            '--gas', '600000',
             '--fees', '15loya',
             '--chain-id', 'layertest-4',
             '--yes',

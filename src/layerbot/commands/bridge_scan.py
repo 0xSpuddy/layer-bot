@@ -1,5 +1,5 @@
 import click
-from ..utils.query_layer import get_claim_deposit_txs, get_claimed_deposit_ids, get_withdraw_tokens_txs
+from ..utils.query_layer import get_claimed_deposit_ids, get_withdraw_tokens_txs
 from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
 from ..bridge_info import main as scan_bridge_contract, update_withdrawal_status
 from ..utils.scan_time import update_scan_time
@@ -16,11 +16,7 @@ def deposits():
     print("\nScanning bridge contract for new deposits...")
     scan_bridge_contract()
     
-    # 2. Then scan for claim deposit transactions
-    print("\nScanning claim transactions...")
-    get_claim_deposit_txs()
-    
-    # 4. Finally, get claimed deposit IDs to update final status
+    # 2. Get claimed deposit IDs to update final status
     print("\nUpdating claimed status...")
     get_claimed_deposit_ids()
 

@@ -21,8 +21,10 @@ def report_test_value():
     
     # Get user inputs
     click.echo("\nReport Test Value - Input Required Information:")
-    query_data = click.prompt('Enter the query data', type=str)
-    value_data = click.prompt('Enter the value data', type=str)
+    # query_data = click.prompt('Enter the query data', type=str)
+    # value_data = click.prompt('Enter the value data', type=str)
+    query_data = "00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000953706f745072696365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003657468000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000037573640000000000000000000000000000000000000000000000000000000000"
+    value_data = "000000000000000000000000000000000000000000000066ffcbfd5e5a300000"
 
     # Show transaction details for confirmation
     click.echo('\nTransaction Details:')
@@ -42,11 +44,12 @@ def report_test_value():
             'oracle',
             'tip',
             query_data,
-            '1000loya',
+            '10000loya',
             '--from', account_name,
             '--gas', '500000',
             '--fees', '15loya',
             '--chain-id', 'layertest-4',
+            '--sign-mode', 'textual',
             '--yes',
             '--node', layer_rpc_url
         ]
@@ -68,7 +71,7 @@ def report_test_value():
 
         # Execute the command
         tip_result = subprocess.run(tip_cmd, capture_output=True, text=True, check=True)
-        time.sleep(4)
+        time.sleep(2)
         report_result = subprocess.run(report_cmd, capture_output=True, text=True, check=True)
         
         # Parse the output to find txhash and raw_log
