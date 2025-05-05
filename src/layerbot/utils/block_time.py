@@ -299,8 +299,8 @@ def check_for_duplicates():
         # Count rows before deduplication
         original_count = len(df)
         
-        # Convert timestamps to datetime for proper comparison
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Convert timestamps to datetime using ISO8601 format
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601')
         
         # Check for duplicates by block_height (which should be unique)
         duplicates = df.duplicated(subset=['block_height'], keep='last')
@@ -340,8 +340,12 @@ def record_block_time():
     try:
         df = pd.read_csv(CSV_FILE)
         if not df.empty:
+            # Convert timestamps using ISO8601 format
+            df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601')
+            df['block_time'] = pd.to_datetime(df['block_time'], format='ISO8601')
+            
             last_row = df.iloc[-1]
-            last_block_time = pd.to_datetime(last_row['block_time'])
+            last_block_time = pd.to_datetime(last_row['block_time'], format='ISO8601')
             last_height = int(last_row['block_height'])
             
             if last_height < height:
@@ -389,8 +393,8 @@ def get_block_time_stats():
                 "week": "No data"
             }
         
-        # Convert timestamps to datetime
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Convert timestamps to datetime using ISO8601 format
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='ISO8601')
         
         # Define time cutoffs
         now = datetime.now()
