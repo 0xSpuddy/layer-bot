@@ -31,7 +31,6 @@ def show_deposits():
     
     # Convert the large numbers to ETH format (divide by 10^18)
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
-    deposits_df['Tip'] = deposits_df['Tip'].apply(lambda x: float(x) / 1e18)
     
     # Calculate which rows need highlighting
     current_time = datetime.now().timestamp()

@@ -641,7 +641,6 @@
 </head>
 <body>
     <h1>Tellor Monitor Dashboard</h1>
-    <div class="maintenance-alert">The layer bridge is currently down for maintenance. Please check back soon.</div>
 
     <!-- Tabs -->
     <div class="tabs">
@@ -668,7 +667,6 @@
                     <tr>
                         <th>Deposit ID</th>
                         <th>Amount (TRB)</th>
-                        <th>Tip (TRB)</th>
                         <th>Aggregate Timestamp</th>
                         <th>Claimed</th>
                     </tr>
@@ -679,7 +677,6 @@
                     <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
                         <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
                         <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
-                        <td>{{ "%.4f"|format(deposit['Tip']) }}</td>
                         <td>{{ deposit['Aggregate Timestamp']|default('No Aggregate Yet') }}</td>
                         <td>{{ deposit['Claimed'] }}</td>
                     </tr>
