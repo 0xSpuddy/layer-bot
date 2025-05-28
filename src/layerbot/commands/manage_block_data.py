@@ -55,7 +55,12 @@ def clean_old_records():
     """Clean old records from the block_time.csv file"""
     from layerbot.utils.block_time import clean_old_records as do_clean
     do_clean()
-    click.echo("Old records cleaned")
+
+@click.command(name="clean-backups")
+def clean_backups():
+    """Keep only the most recent backup and delete older ones"""
+    from layerbot.utils.block_time import clean_old_backups
+    clean_old_backups()
 
 @click.command(name="show-stats")
 def show_stats():
@@ -73,6 +78,7 @@ cli.add_command(create_backup)
 cli.add_command(list_backups)
 cli.add_command(restore_backup)
 cli.add_command(clean_old_records)
+cli.add_command(clean_backups)
 cli.add_command(show_stats)
 
 if __name__ == "__main__":

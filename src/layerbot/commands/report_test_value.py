@@ -88,7 +88,7 @@ def report_test_value():
             'oracle',
             'tip',
             eth_usd_query_data,
-            '1000loya',
+            '10000loya',
             '--from', account_name,
             '--gas', '600000',
             '--fees', '15loya',

@@ -108,6 +108,30 @@ def ensure_csv_exists():
             writer = csv.writer(f)
             writer.writerow(['timestamp', 'block_height', 'block_time', 'time_since_last_check', 'avg_block_time'])
 
+def clean_old_backups():
+    """Keep only the most recent backup and delete all older ones"""
+    try:
+        backups = list(Path('.').glob(f"{CSV_FILE}.*.bak"))
+        if len(backups) <= 1:
+            return  # No need to clean if we have 0 or 1 backup
+            
+        # Sort by modification time (newest first)
+        backups.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        
+        # Keep the most recent backup, delete the rest
+        for backup in backups[1:]:
+            try:
+                backup.unlink()
+                print(f"Deleted old backup: {backup}")
+            except Exception as e:
+                print(f"Error deleting backup {backup}: {e}")
+                
+        print(f"Kept most recent backup: {backups[0]}")
+    except Exception as e:
+        print(f"Error cleaning old backups: {e}")
+        import traceback
+        traceback.print_exc()
+
 def create_backup(reason="manual"):
     """Create a timestamped backup of the block_time.csv file
     
@@ -127,6 +151,10 @@ def create_backup(reason="manual"):
         
         shutil.copy2(CSV_FILE, backup_file)
         print(f"Created backup of {CSV_FILE} at {backup_file}")
+        
+        # Clean up old backups after creating a new one
+        clean_old_backups()
+        
         return backup_file
     except Exception as e:
         print(f"Error creating backup: {e}")
@@ -500,6 +528,9 @@ if __name__ == "__main__":
     # Clean command
     clean_parser = subparsers.add_parser("clean", help="Clean old records from the CSV file")
     
+    # Clean backups command
+    clean_backups_parser = subparsers.add_parser("clean-backups", help="Keep only the most recent backup and delete older ones")
+    
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Show block time statistics")
     
@@ -536,6 +567,9 @@ if __name__ == "__main__":
     
     elif args.command == "clean":
         clean_old_records()
+    
+    elif args.command == "clean-backups":
+        clean_old_backups()
     
     elif args.command == "stats":
         stats = get_block_time_stats()
