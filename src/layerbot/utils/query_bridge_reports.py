@@ -65,33 +65,42 @@ def query_layer_chain(query_id, timestamp):
         return None
 
 def save_aggregate_data(query_id, data):
-    """Save aggregate data to a CSV file named after the query_id."""
+    """Save aggregate data to a single CSV file, overwriting old data for each query_id."""
     try:
-        filename = f"aggregate_data_{query_id[:10]}.csv"
-        headers = ['timestamp', 'aggregate_power', 'aggregate_reporter', 'aggregate_value', 'meta_id']
+        filename = "aggregate_data_all.csv"
+        headers = ['query_id', 'timestamp', 'aggregate_power', 'aggregate_reporter', 'aggregate_value', 'meta_id']
         
+        # Create file if it doesn't exist
         if not os.path.exists(filename):
             print(f"Creating new aggregate file: {filename}")
             with open(filename, 'w', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=headers)
                 writer.writeheader()
         
-        existing_timestamps = set()
+        # Read existing data
+        existing_data = {}
         with open(filename, 'r', newline='') as f:
             reader = csv.DictReader(f)
-            existing_timestamps = {row['timestamp'] for row in reader}
+            for row in reader:
+                existing_data[row['query_id']] = row
         
-        if data['timestamp'] not in existing_timestamps:
-            print(f"Adding new aggregate data: power={data['aggregate_power']}, timestamp={data['timestamp']}")
-            with open(filename, 'a', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=headers)
-                writer.writerow({
-                    'aggregate_power': data['aggregate_power'],
-                    'aggregate_reporter': data['aggregate_reporter'],
-                    'aggregate_value': data['aggregate_value'],
-                    'meta_id': data['meta_id'],
-                    'timestamp': data['timestamp']
-                })
+        # Add or update data for this query_id
+        existing_data[query_id] = {
+            'query_id': query_id,
+            'timestamp': data['timestamp'],
+            'aggregate_power': data['aggregate_power'],
+            'aggregate_reporter': data['aggregate_reporter'],
+            'aggregate_value': data['aggregate_value'],
+            'meta_id': data['meta_id']
+        }
+        
+        # Write all data back to file
+        print(f"Updating aggregate data for query_id {query_id[:10]}...: power={data['aggregate_power']}, timestamp={data['timestamp']}")
+        with open(filename, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=headers)
+            writer.writeheader()
+            for row_data in existing_data.values():
+                writer.writerow(row_data)
             
         return True
     except Exception as e:
@@ -99,17 +108,22 @@ def save_aggregate_data(query_id, data):
         return False
 
 def get_best_timestamp(query_id):
-    """Get the timestamp with highest aggregate_power for a query_id."""
+    """Get the timestamp with highest aggregate_power for a query_id from the single CSV file."""
     try:
-        filename = f"aggregate_data_{query_id[:10]}.csv"
+        filename = "aggregate_data_all.csv"
         if not os.path.exists(filename):
             return None
             
         df = pd.read_csv(filename)
         if df.empty:
             return None
+        
+        # Filter data for the specific query_id
+        query_data = df[df['query_id'] == query_id]
+        if query_data.empty:
+            return None
             
-        best_row = df.loc[df['aggregate_power'].idxmax()]
+        best_row = query_data.loc[query_data['aggregate_power'].idxmax()]
         print(f"Best timestamp for {query_id[:10]}...: {best_row['timestamp']} (power: {best_row['aggregate_power']})")
         return best_row['timestamp']
         
@@ -122,32 +136,45 @@ def get_bridge_data_before(query_id):
     try:
         print(f"\nProcessing query_id: {query_id[:10]}...")
         
+        best_data = None
+        best_power = -1
+        
         # Initial query with max timestamp
         max_timestamp = "10000000000000000000"
         print(f"Initial query with max timestamp: {max_timestamp}")
         current_data = query_layer_chain(query_id, max_timestamp)
-        print(f"Current Spud2 data: {current_data}")
+        print(f"Current data: {current_data}")
         if not current_data:
             print(f"No initial data found for {query_id[:10]}...")
             return None
-            
-        # Save initial data
-        save_aggregate_data(query_id, current_data)
         
+        # Check if this is the best data so far
+        if current_data['aggregate_power'] > best_power:
+            best_data = current_data
+            best_power = current_data['aggregate_power']
+            
         # Iterate up to 15 times using found timestamps
         for i in range(14):
             current_timestamp = current_data['timestamp']
-            print(f"Current Spud2 timestamp: {current_timestamp}")
+            print(f"Query timestamp: {current_timestamp}")
             current_data = query_layer_chain(query_id, current_timestamp)
-            print(f"Current Spud2 data: {current_data}")
+            print(f"Current data: {current_data}")
             if not current_data:
                 print(f"No more data found after {i+1} iterations")
                 break
-                
-            save_aggregate_data(query_id, current_data)
+            
+            # Check if this is the best data so far
+            if current_data['aggregate_power'] > best_power:
+                best_data = current_data
+                best_power = current_data['aggregate_power']
         
-        # Get best timestamp based on aggregate_power
-        return get_best_timestamp(query_id)
+        # Save only the best data for this query_id
+        if best_data:
+            print(f"Saving best data with power {best_power}")
+            save_aggregate_data(query_id, best_data)
+            return best_data['timestamp']
+        
+        return None
         
     except Exception as e:
         print(f"Error in get_bridge_data_before: {e}")

@@ -1,207 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Bridge Deposits</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tellor Monitor Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='example_style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
-        body {
-            background-color: #0a0a0a;  /* Darker background */
-            color: #00ff9d;  /* Bright green text */
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            font-weight: 500;  /* Slightly bolder base text */
-        }
-
-        h1 {
-            color: #00ff9d;  /* Match the green theme */
-            margin-bottom: 10px;  /* Reduced margin to accommodate the new line */
-            font-weight: 700;  /* Bolder heading */
-        }
-
-        .update-info {
-            color: #00cc7a;  /* Slightly darker green for the update info */
-            margin-bottom: 20px;
-            font-size: 0.9em;
-        }
-
-        .maintenance-alert {
-            color: #ff0000;  /* Red text */
-            font-weight: bold;
-            margin-bottom: 20px;
-            font-size: 1em;
-        }
-
-        /* Status key/legend styles */
-        .status-key {
+        /* Additional custom styles for our specific components */
+        .tab-navigation {
             display: flex;
-            margin-bottom: 20px;
-            gap: 15px;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #333344;
+            padding-bottom: 0;
         }
-        
-        .key-item {
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: #00d4ff;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+        }
+
+        .tab-btn.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .status-legend {
+            background: rgba(25, 25, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid #333344;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-        
-        .key-indicator {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-        }
-        
-        .key-indicator.ready-to-claim {
-            background-color: rgba(0, 102, 51, 0.4);  /* Match the ready-to-claim background */
-        }
-        
-        .key-text {
-            color: #00ff9d;
+            gap: 0.5rem;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background-color: #1a1a1a;  /* Darker table background */
-            border-radius: 8px;
-            overflow: hidden;
+        .legend-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
         }
 
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #2a2a2a;  /* Darker borders */
-            vertical-align: top;
-            font-weight: 500;  /* Bolder text */
+        .legend-indicator.ready-to-claim {
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
         }
 
-        th {
-            background-color: #202020;  /* Darker header */
-            color: #00ff9d;  /* Green headers */
-            font-weight: 700;  /* Even bolder headers */
+        .legend-indicator.claimed {
+            background: rgba(0, 255, 136, 0.3);
         }
 
-        tr {
-            background-color: #1a1a1a;  /* Darker rows */
+        .legend-indicator.invalid {
+            background: linear-gradient(135deg, #ff6b35, #ff4757);
         }
 
-        tr:nth-child(even) {
-            background-color: #222222;  /* Darker alternating rows */
+        .legend-text {
+            color: #00d4ff;
+            font-size: 0.875rem;
         }
 
-        tr:hover {
-            background-color: #2a2a2a;  /* Darker hover state */
-        }
-
-        .address {
-            font-family: monospace;
-            font-size: 0.9em;
-            display: block;
-            margin: 2px 0;
-            color: #00cc7a;  /* Slightly darker green for addresses */
-            font-weight: 600;  /* Bolder addresses */
-            word-break: break-all;  /* Allow breaking of long words */
-            white-space: pre-wrap;  /* Preserve whitespace but allow wrapping */
-        }
-
-        .address-label {
-            color: #009958;  /* Darker green for labels */
-            font-size: 0.8em;
-            display: block;
-            margin-top: 4px;
-            font-weight: 500;  /* Bolder labels */
-            white-space: nowrap;  /* Prevent label wrapping */
-        }
-
-        .address-container {
-            min-width: 0;  /* Remove minimum width constraint */
-            width: 100%;  /* Take full width of parent */
-            display: flex;
-            flex-direction: column;
-            gap: 8px;  /* Add some spacing between items */
-        }
-
-        .ready-to-claim {
-            background-color: rgba(0, 102, 51, 0.4) !important;  /* Darker green background */
-        }
-
-        .ready-to-claim:hover {
-            background-color: rgba(0, 102, 51, 0.6) !important;  /* Slightly lighter on hover */
-        }
-
-        .recent-scan {
-            background-color: rgba(0, 102, 51, 0.2) !important;  /* Very pale green for recent scans */
-        }
-
-        .recent-scan:hover {
-            background-color: rgba(0, 102, 51, 0.3) !important;  /* Slightly darker on hover */
-        }
-
-        .invalid-recipient {
-            background-color: rgba(102, 0, 0, 0.4) !important;  /* Darker red background */
-        }
-
-        .invalid-recipient:hover {
-            background-color: rgba(102, 0, 0, 0.6) !important;  /* Slightly lighter on hover */
-        }
-
-        /* Add some subtle shadows for depth */
-        .table-container {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);  /* Darker shadow */
-            border-radius: 8px;
-            overflow: auto;
-        }
-
-        td .query-data {
-            font-family: monospace;
-            font-size: 0.9em;
-            word-break: break-all;
-            color: #00cc7a;
-        }
-
-        .expandable-row {
+        /* Enhanced table rows */
+        .data-table .expandable-row {
             cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .address-details {
-            display: none;
-            background-color: #1f1f1f;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 0;
-            border-top: 1px solid #2a2a2a;
-            width: 100%;  /* Ensure it takes full width of the table */
-            box-sizing: border-box;  /* Include padding in width calculation */
+        .data-table .expandable-row:hover {
+            background: rgba(0, 255, 136, 0.15) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 10px rgba(0, 255, 136, 0.2);
         }
 
-        .expanded + .details-row .address-details {
-            display: block;
+        .data-table .ready-to-claim {
+            background: rgba(0, 255, 136, 0.1) !important;
+            border-left: 4px solid #00ff88;
         }
 
-        .details-row {
-            display: none;
+        .data-table .claimed-row {
+            background: rgba(25, 25, 35, 0.5) !important;
+            opacity: 0.7;
+            border-left: 4px solid #666;
         }
 
-        .expanded + .details-row {
-            display: table-row;
+        .data-table .invalid-recipient {
+            background: rgba(255, 107, 53, 0.1) !important;
+            border-left: 4px solid #ff6b35;
         }
 
-        /* Update hover effect for clickable rows */
-        tr.expandable-row:hover {
-            background-color: #2a2a2a;
-            transition: background-color 0.2s ease;
-        }
-
-        /* Animation for expanding/collapsing */
-        .address-details {
-            transition: all 0.3s ease-in-out;
-            overflow: hidden;
-        }
-
-        /* Styling for the expand/collapse indicator */
         .expand-indicator {
-            display: inline-block;
-            margin-right: 5px;
+            color: #a855f7;
+            font-weight: bold;
+            margin-right: 0.5rem;
             transition: transform 0.3s ease;
         }
 
@@ -209,300 +136,541 @@
             transform: rotate(90deg);
         }
 
-        /* Add new style for claimed deposits */
-        .claimed-row {
-            color: #92e9cc !important;  /* Dimmer green */
-            opacity: 0.7;  /* Slightly transparent */
+        .address-details {
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid #333344;
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 0.5rem 0;
         }
 
-        /* Update hover state for claimed rows */
-        .claimed-row:hover {
-            opacity: 0.9;  /* More visible on hover */
+        .address-container {
+            display: grid;
+            gap: 1rem;
         }
 
-        /* Ensure claimed addresses are also dimmed */
-        .claimed-row .address {
-            color: #005544 !important;  /* Dimmer green for addresses */
+        .address-item {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 1rem;
+            align-items: start;
         }
 
-        .claimed-row .address-label {
-            color: #004433 !important;  /* Even dimmer green for labels */
+        .address-label {
+            color: #00d4ff;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        /* Add new styles for tabs */
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #2a2a2a;
+        .address-value {
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            word-break: break-all;
         }
 
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            color: #00ff9d;
-            background-color: #1a1a1a;
-            border: none;
-            margin-right: 5px;
-            border-radius: 5px 5px 0 0;
-            transition: all 0.3s ease;
+        /* Block estimation form */
+        .estimation-container {
+            background: rgba(25, 25, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid #333344;
+            padding: 2rem;
+            border-radius: 4px;
+            margin-top: 2rem;
         }
 
-        .tab.active {
-            background-color: #2a2a2a;
-            color: #00ff9d;
-            font-weight: bold;
+        .estimation-form {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            align-items: end;
         }
 
-        .tab:hover {
-            background-color: #2a2a2a;
-        }
-
-        .table-section {
-            display: none;
-        }
-
-        .table-section.active {
-            display: block;
-        }
-
-        /* Add styles for withdrawal status */
-        .success {
-            color: #00ff9d;
-        }
-
-        .failed {
-            color: #ff4444;
-        }
-
-        /* Block time section styles */
-        .block-time-container {
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-        }
-
-        .block-time-info {
-            color: #00cc7a;
-            font-size: 0.9em;
-            margin-bottom: 15px;
-            background-color: #222222;
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        .block-time-stats {
+        .form-group {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 0.5rem;
         }
 
-        .stat-item {
-            display: flex;
-            padding: 10px;
-            background-color: #222222;
-            border-radius: 6px;
+        .form-group label {
+            color: #00d4ff;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .stat-label {
-            font-weight: bold;
-            color: #00ff9d;
-            min-width: 180px;
-        }
-
-        .stat-value {
-            color: #00cc7a;
-            font-family: monospace;
-            font-size: 1.1em;
-        }
-
-        /* Make h2 match our styling */
-        h2 {
-            color: #00ff9d;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .block-time-title {
-            color: #00ff9d;
-            margin-bottom: 15px;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        /* Block Estimation Form Styles */
-        .block-estimation-container {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .block-estimation-form {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        
-        #blockHeightInput {
-            flex-grow: 1;
-            padding: 12px;
-            border: 1px solid #2a2a2a;
-            background-color: #222222;
-            color: #00ff9d;
+        .form-group input,
+        .form-group select {
+            padding: 0.75rem;
+            border: 2px solid #333344;
+            background: #1a1a2e;
+            color: #00ff88;
+            font-size: 0.875rem;
+            font-family: inherit;
             border-radius: 4px;
-            font-size: 16px;
+            transition: border-color 0.2s;
         }
-        
-        .timezone-select {
-            padding: 12px;
-            border: 1px solid #2a2a2a;
-            background-color: #222222;
-            color: #00ff9d;
-            border-radius: 4px;
-            font-size: 16px;
-            min-width: 180px;
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
-        
-        .timezone-select option {
-            background-color: #222222;
-            color: #00ff9d;
-        }
-        
-        .calculate-btn {
-            padding: 12px 20px;
-            background-color: #006633;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        
-        .calculate-btn:hover {
-            background-color: #008844;
-        }
-        
-        /* Estimation Results Styles */
+
         .estimation-result {
-            margin-top: 20px;
-            min-height: 50px;
+            min-height: 3rem;
         }
-        
-        .loading {
-            color: #00cc7a;
-            font-style: italic;
-        }
-        
-        .estimation-success {
-            background-color: rgba(0, 102, 51, 0.2);
-            padding: 15px;
+
+        .result-success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid rgba(0, 255, 136, 0.3);
             border-radius: 4px;
-            border-left: 4px solid #00ff9d;
+            padding: 1.5rem;
         }
-        
-        .estimation-error {
-            background-color: rgba(102, 0, 0, 0.2);
-            padding: 15px;
+
+        .result-error {
+            background: rgba(255, 107, 53, 0.1);
+            border: 2px solid rgba(255, 107, 53, 0.3);
             border-radius: 4px;
-            border-left: 4px solid #ff0000;
-            color: #ff6666;
+            padding: 1.5rem;
         }
-        
-        .estimation-header {
-            color: #00ff9d;
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 15px;
-            border-bottom: 1px solid rgba(0, 255, 157, 0.3);
-            padding-bottom: 5px;
+
+        .result-header {
+            color: #a855f7;
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        
-        .estimation-item {
-            margin: 10px 0;
-            display: flex;
+
+        .result-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .result-item {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .result-label {
+            color: #00d4ff;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #00ff88;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+                 /* Timestamp styling */
+         .data-table .time-ago {
+             font-size: 0.8rem;
+             color: #00d4ff;
+             font-weight: 500;
+             white-space: nowrap;
+             min-width: 160px;
+         }
+
+         .data-table .time-ago.no-aggregate {
+             color: #666;
+             font-style: italic;
+         }
+
+         /* Deposits chart styling */
+         .deposits-chart .chart-container {
+             position: relative;
+             height: 400px;
+             width: 100%;
+             background: rgba(20, 20, 30, 0.8);
+             border: 2px solid #333344;
+            border-radius: 4px;
+             padding: 1rem;
+             box-sizing: border-box;
+         }
+
+         .deposits-chart canvas {
+             background: transparent;
+             width: 100% !important;
+             height: 100% !important;
+         }
+
+         /* Ensure chart loads properly */
+         #depositsChart {
+             display: block;
+             max-width: 100%;
+             max-height: 100%;
+         }
+
+         /* Responsive adjustments */
+         @media (max-width: 768px) {
+             .estimation-form {
+                 grid-template-columns: 1fr;
+             }
+             
+             .legend-items {
             flex-direction: column;
-        }
-        
-        .estimation-label {
-            color: #00cc7a;
-            font-size: 0.9em;
-            margin-bottom: 4px;
-        }
-        
-        .estimation-value {
-            color: #00ff9d;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-        
-        @media (min-width: 768px) {
-            .estimation-item {
-                flex-direction: row;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            .estimation-label {
-                min-width: 200px;
+                 gap: 1rem;
+             }
+             
+             .address-item {
+                 grid-template-columns: 1fr;
+                 gap: 0.5rem;
+             }
+             
+             .result-item {
+                 grid-template-columns: 1fr;
+                 gap: 0.5rem;
+             }
+
+             /* Hide one of the timestamp columns on mobile to save space */
+             .data-table th:nth-child(4),
+             .data-table td:nth-child(4) {
+                 display: none;
+             }
+
+             /* Mobile adjustments for deposits chart */
+             .deposits-chart .chart-container {
+                 height: 300px;
+                 padding: 0.5rem;
+             }
+             
+             .deposits-chart h3 {
+                 font-size: 1rem;
             }
         }
     </style>
+</head>
+<body>
+    <div class="app">
+        <main class="main">
+            <!-- Page Header -->
+            <div class="data-section">
+                <div class="data-header">
+                    <div class="data-header-left">
+                        <h2><i class="fas fa-chart-line"></i> Tellor Monitor Dashboard</h2>
+                        <div class="header-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Last Update</span>
+                                <span class="stat-value">{{ most_recent_scan }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Auto Refresh</span>
+                                <span class="stat-value status-indicator">3 min</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <button class="tab-btn active" data-target="deposits-section">
+                        <i class="fas fa-arrow-down"></i> Bridge Deposits
+                    </button>
+                    <button class="tab-btn" data-target="withdrawals-section">
+                        <i class="fas fa-arrow-up"></i> Bridge Withdrawals
+                    </button>
+                    <button class="tab-btn" data-target="block-time-section">
+                        <i class="fas fa-clock"></i> Block Time Analytics
+                    </button>
+                </div>
+
+                <!-- Deposits Tab Content -->
+                <div id="deposits-section" class="tab-content active">
+                    <!-- Deposits Over Time Chart -->
+                    <div class="data-section deposits-chart" style="margin-bottom: 2rem;">
+                        <div class="data-header">
+                            <div class="data-header-left">
+                                <h3><i class="fas fa-chart-line"></i> Deposits Over Time</h3>
+                                <div class="header-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Deposits</span>
+                                        <span class="stat-value" id="totalDeposits">{{ deposits|length }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="depositsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Status Legend -->
+                    <div class="status-legend">
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="legend-indicator ready-to-claim"></span>
+                                <span class="legend-text">Ready to Claim (Out of Time Lock)</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-indicator claimed"></span>
+                                <span class="legend-text">Already Claimed</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-indicator invalid"></span>
+                                <span class="legend-text">Invalid Recipient</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deposits Table -->
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag"></i> Deposit ID</th>
+                                    <th><i class="fas fa-coins"></i> Amount (TRB)</th>
+                                    <th><i class="fas fa-calendar-alt"></i> Deposit Date/Time</th>
+                                    <th><i class="fas fa-clock"></i> Aggregate Date/Time</th>
+                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for deposit in deposits %}
+                                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                    <td>
+                                        <span class="expand-indicator">▶</span>
+                                        <span class="font-mono text-green">{{ deposit['Deposit ID'] }}</span>
+                                    </td>
+                                    <td class="value">{{ "%.4f"|format(deposit['Amount']) }}</td>
+                                    <td class="time-ago">{{ deposit['Formatted_Timestamp'] }}</td>
+                                    <td class="time-ago">{{ deposit['Formatted_Aggregate_Timestamp'] }}</td>
+                                    <td>
+                                        {% if deposit['Claimed']|lower == 'yes' %}
+                                            <span class="badge badge-success">{{ deposit['Claimed'] }}</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">{{ deposit['Claimed'] }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                    <td colspan="5">
+                                        <div class="address-details">
+                                            <div class="address-container">
+                                                <div class="address-item">
+                                                    <span class="address-label">Sender</span>
+                                                    <span class="address-value">{{ deposit['Sender'] }}</span>
+                                                </div>
+                                                <div class="address-item">
+                                                    <span class="address-label">Recipient</span>
+                                                    <span class="address-value">{{ deposit['Recipient'] }}</span>
+                                                </div>
+                                                <div class="address-item">
+                                                    <span class="address-label">Query ID</span>
+                                                    <span class="address-value">{{ deposit['Query ID'] }}</span>
+                                                </div>
+                                                <div class="address-item">
+                                                    <span class="address-label">Query Data</span>
+                                                    <span class="address-value">{{ deposit['Query Data'] }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Withdrawals Tab Content -->
+                <div id="withdrawals-section" class="tab-content">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag"></i> Withdraw ID</th>
+                                    <th><i class="fas fa-user"></i> Creator</th>
+                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for withdrawal in withdrawals %}
+                                <tr class="expandable-row {% if withdrawal['success'] %}ready-to-claim{% else %}invalid-recipient{% endif %}">
+                                    <td>
+                                        <span class="expand-indicator">▶</span>
+                                        <span class="font-mono text-green">{{ withdrawal['withdraw_id'] }}</span>
+                                    </td>
+                                    <td class="reporter">{{ withdrawal['creator'] }}</td>
+                                    <td>
+                                        {% if withdrawal['Claimed'] %}
+                                            <span class="badge badge-success">Yes</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr class="details-row">
+                                    <td colspan="3">
+                                        <div class="address-details">
+                                            <div class="address-container">
+                                                <div class="address-item">
+                                                    <span class="address-label">Recipient</span>
+                                                    <span class="address-value">{{ withdrawal['recipient'] }}</span>
+                                                </div>
+                                                <div class="address-item">
+                                                    <span class="address-label">Transaction Hash</span>
+                                                    <span class="address-value">{{ withdrawal['txhash'] }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Block Time Tab Content -->
+                <div id="block-time-section" class="tab-content">
+                    <!-- Block Time Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number">{{ block_time_stats.five_min }}</div>
+                                <div class="stat-title">5 Min Average</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-hourglass-half"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number">{{ block_time_stats.thirty_min }}</div>
+                                <div class="stat-title">30 Min Average</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number">{{ block_time_stats.sixty_min }}</div>
+                                <div class="stat-title">60 Min Average</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number">{{ block_time_stats.day }}</div>
+                                <div class="stat-title">24 Hour Average</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-week"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-number">{{ block_time_stats.week }}</div>
+                                <div class="stat-title">7 Day Average</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Block Estimation Tool -->
+                    <div class="estimation-container">
+                        <h3 style="color: #a855f7; margin-bottom: 1.5rem;">
+                            <i class="fas fa-calculator"></i> Block Time Estimation Tool
+                        </h3>
+                        
+                        <div class="estimation-form">
+                            <div class="form-group">
+                                <label for="blockHeightInput">Target Block Height</label>
+                                <input type="number" id="blockHeightInput" placeholder="Enter future block height" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="timezoneSelect">Timezone</label>
+                                <select id="timezoneSelect">
+                                    <option value="">Browser's local time</option>
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">US Eastern</option>
+                                    <option value="America/Chicago">US Central</option>
+                                    <option value="America/Denver">US Mountain</option>
+                                    <option value="America/Los_Angeles">US Pacific</option>
+                                    <option value="Europe/London">UK/Ireland</option>
+                                    <option value="Europe/Paris">Central Europe</option>
+                                    <option value="Asia/Tokyo">Japan</option>
+                                    <option value="Asia/Shanghai">China</option>
+                                    <option value="Australia/Sydney">Australia (East)</option>
+                                </select>
+                            </div>
+                            <button id="calculateBlockTime" class="btn btn-primary">
+                                <i class="fas fa-play"></i> Calculate
+                            </button>
+                        </div>
+
+                        <div id="blockEstimationResult" class="estimation-result">
+                            <!-- Results will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('.expandable-row');
-            
-            // Clear the block height input field on page load
-            document.getElementById('blockHeightInput').value = '';
-            
-            rows.forEach(row => {
+            // Tab switching functionality
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all tabs and contents
+                    tabBtns.forEach(tab => tab.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+
+                    // Add active class to clicked tab and corresponding content
+                    btn.classList.add('active');
+                    const targetId = btn.getAttribute('data-target');
+                    document.getElementById(targetId).classList.add('active');
+                });
+            });
+
+            // Expandable row functionality
+            const expandableRows = document.querySelectorAll('.expandable-row');
+            expandableRows.forEach(row => {
                 row.addEventListener('click', function() {
-                    // Toggle the expanded class
                     this.classList.toggle('expanded');
-                    
-                    // Update the expand indicator
+                    const detailsRow = this.nextElementSibling;
                     const indicator = this.querySelector('.expand-indicator');
+                    
                     if (this.classList.contains('expanded')) {
-                        indicator.textContent = '►';
-                    } else {
+                        detailsRow.style.display = 'table-row';
                         indicator.textContent = '▼';
+                    } else {
+                        detailsRow.style.display = 'none';
+                        indicator.textContent = '▶';
                     }
                 });
             });
 
-            // New tab switching logic
-            const tabs = document.querySelectorAll('.tab');
-            const sections = document.querySelectorAll('.table-section');
-
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    // Remove active class from all tabs and sections
-                    tabs.forEach(t => t.classList.remove('active'));
-                    sections.forEach(s => s.classList.remove('active'));
-
-                    // Add active class to clicked tab and corresponding section
-                    tab.classList.add('active');
-                    const targetSection = document.querySelector(tab.dataset.target);
-                    targetSection.classList.add('active');
-                });
+            // Initially hide all details rows
+            document.querySelectorAll('.details-row').forEach(row => {
+                row.style.display = 'none';
             });
 
-            // Convert UTC timestamp to local time for all update-info elements
-            const updateInfoElements = document.querySelectorAll('.update-info');
-            updateInfoElements.forEach(updateInfo => {
-                const text = updateInfo.textContent;
-                const utcMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) UTC/);
-                if (utcMatch) {
-                    const utcTime = utcMatch[1];
-                    const localTime = new Date(utcTime + 'Z').toLocaleString();
-                    updateInfo.textContent = text.replace(utcTime + ' UTC', localTime);
-                }
-            });
+            // Clear block height input on page load
+            document.getElementById('blockHeightInput').value = '';
+
+            // Initialize deposits chart
+            initializeDepositsChart();
 
             // Block time estimation functionality
             document.getElementById('calculateBlockTime').addEventListener('click', function() {
@@ -512,14 +680,13 @@
                 const timezone = timezoneSelect.value;
                 const resultDiv = document.getElementById('blockEstimationResult');
                 
-                // Validate input
                 if (!blockHeight || isNaN(parseInt(blockHeight))) {
-                    resultDiv.innerHTML = '<div class="estimation-error">Please enter a valid block height</div>';
+                    resultDiv.innerHTML = '<div class="result-error"><div class="result-header">Error</div><p style="color: #ff6b35;">Please enter a valid block height</p></div>';
                     return;
                 }
                 
                 // Show loading state
-                resultDiv.innerHTML = '<div class="loading">Calculating block time estimation for height ' + blockHeight + '...</div>';
+                resultDiv.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">Calculating estimation...</div></div>';
                 
                 // Build request data
                 let formData = 'block_height=' + encodeURIComponent(blockHeight);
@@ -538,266 +705,181 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Format the response
-                        let resultHTML = '<div class="estimation-success">';
-                        resultHTML += '<div class="estimation-header">Block Time Estimation Results</div>';
+                        let resultHTML = '<div class="result-success">';
+                        resultHTML += '<div class="result-header"><i class="fas fa-check-circle"></i> Block Time Estimation Results</div>';
+                        resultHTML += '<div class="result-grid">';
                         
                         if (data.result['Current block height']) {
-                            resultHTML += `<div class="estimation-item">
-                                <span class="estimation-label">Current block height:</span>
-                                <span class="estimation-value">${data.result['Current block height']}</span>
+                            resultHTML += `<div class="result-item">
+                                <span class="result-label">Current block height:</span>
+                                <span class="result-value">${data.result['Current block height']}</span>
                             </div>`;
                         }
                         
-                        // Always use the user input for target height display
-                        resultHTML += `<div class="estimation-item">
-                            <span class="estimation-label">Target block height:</span>
-                            <span class="estimation-value">${data.user_input}</span>
+                        resultHTML += `<div class="result-item">
+                            <span class="result-label">Target block height:</span>
+                            <span class="result-value">${data.user_input}</span>
                         </div>`;
                         
-                        // Clear the input field after successful calculation
+                        // Clear input after successful calculation
                         blockHeightInput.value = '';
                         
-                        if (data.result['Blocks remaining']) {
-                            resultHTML += `<div class="estimation-item">
-                                <span class="estimation-label">Blocks remaining:</span>
-                                <span class="estimation-value">${data.result['Blocks remaining']}</span>
-                            </div>`;
-                        }
-                        
-                        if (data.result['Estimated time until target']) {
-                            resultHTML += `<div class="estimation-item">
-                                <span class="estimation-label">Estimated time until target:</span>
-                                <span class="estimation-value">${data.result['Estimated time until target']}</span>
-                            </div>`;
-                        }
-                        
-                        if (data.result['Estimated arrival (UTC)']) {
-                            // Extract the UTC time
-                            const utcTimeStr = data.result['Estimated arrival (UTC)'];
-                            const utcTime = utcTimeStr.replace(' UTC', '');
-                            
-                            // Display UTC time
-                            resultHTML += `<div class="estimation-item">
-                                <span class="estimation-label">Estimated arrival (UTC):</span>
-                                <span class="estimation-value">${utcTimeStr}</span>
-                            </div>`;
-                            
-                            // Convert to browser's local time for display
-                            try {
-                                // Create a Date object from the UTC time
-                                const date = new Date(utcTime + 'Z'); // 'Z' ensures it's parsed as UTC
-                                
-                                if (!isNaN(date.getTime())) {
-                                    // Format the date in the user's local timezone
-                                    const localTimeStr = date.toLocaleString([], {
-                                        year: 'numeric',
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        second: '2-digit',
-                                        hour12: false,
-                                        timeZoneName: 'short'
-                                    });
-                                    
-                                    resultHTML += `<div class="estimation-item">
-                                        <span class="estimation-label">Estimated arrival (Your local time):</span>
-                                        <span class="estimation-value">${localTimeStr}</span>
+                        Object.keys(data.result).forEach(key => {
+                            if (key !== 'Current block height') {
+                                resultHTML += `<div class="result-item">
+                                    <span class="result-label">${key}:</span>
+                                    <span class="result-value">${data.result[key]}</span>
                                     </div>`;
-                                }
-                            } catch (e) {
-                                console.error("Error converting time:", e);
                             }
-                        }
-                        
-                        // Use local time from backend if available and doesn't have UTC in the key
-                        const localTimeKey = Object.keys(data.result).find(key => 
-                            key.includes('Estimated arrival') && 
-                            !key.includes('UTC') && 
-                            !key.includes('Your local time')
-                        );
-                        
-                        if (localTimeKey && data.result[localTimeKey]) {
-                            resultHTML += `<div class="estimation-item">
-                                <span class="estimation-label">${localTimeKey}:</span>
-                                <span class="estimation-value">${data.result[localTimeKey]}</span>
-                            </div>`;
-                        }
-                        
-                        resultHTML += '</div>';
+                        });
+
+                        resultHTML += '</div></div>';
                         resultDiv.innerHTML = resultHTML;
                     } else {
-                        // Show error
-                        resultDiv.innerHTML = `<div class="estimation-error">Error: ${data.error || 'Unknown error occurred'}</div>`;
+                        resultDiv.innerHTML = `<div class="result-error"><div class="result-header"><i class="fas fa-exclamation-triangle"></i> Error</div><p style="color: #ff6b35;">${data.error || 'Unknown error occurred'}</p></div>`;
                     }
                 })
                 .catch(error => {
-                    resultDiv.innerHTML = `<div class="estimation-error">Error: ${error.message}</div>`;
-                });
+                    resultDiv.innerHTML = `<div class="result-error"><div class="result-header"><i class="fas fa-exclamation-triangle"></i> Error</div><p style="color: #ff6b35;">${error.message}</p></div>`;
             });
         });
-    </script>
-</head>
-<body>
-    <h1>Tellor Monitor Dashboard</h1>
 
-    <!-- Tabs -->
-    <div class="tabs">
-        <button class="tab active" data-target="#deposits-section">Bridge Deposits</button>
-        <button class="tab" data-target="#withdrawals-section">Bridge Withdrawals</button>
-        <button class="tab" data-target="#block-time-section">Layer Network Block Time</button>
-    </div>
+             // Initialize deposits chart
+             function initializeDepositsChart() {
+                 try {
+                     const canvas = document.getElementById('depositsChart');
+                     if (!canvas) {
+                         console.error('Canvas element not found');
+                         return;
+                     }
 
-    <!-- Deposits Section -->
-    <div id="deposits-section" class="table-section active">
-        <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
-        
-        <!-- Status key/legend -->
-        <div class="status-key">
-            <div class="key-item">
-                <span class="key-indicator ready-to-claim"></span>
-                <span class="key-text">Green highlighted rows are out of time lock.</span>
-            </div>
-        </div>
-        
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Deposit ID</th>
-                        <th>Amount (TRB)</th>
-                        <th>Aggregate Timestamp</th>
-                        <th>Claimed</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for deposit in deposits %}
-                    <!-- Main row -->
-                    <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
-                        <td><span class="expand-indicator">▼</span>{{ deposit['Deposit ID'] }}</td>
-                        <td>{{ "%.4f"|format(deposit['Amount']) }}</td>
-                        <td>{{ deposit['Aggregate Timestamp']|default('No Aggregate Yet') }}</td>
-                        <td>{{ deposit['Claimed'] }}</td>
-                    </tr>
-                    <!-- Details row -->
-                    <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
-                        <td colspan="5">
-                            <div class="address-details">
-                                <div class="address-container">
-                                    <span class="address-label">Sender:</span>
-                                    <span class="address">{{ deposit['Sender'] }}</span>
-                                    
-                                    <span class="address-label">Recipient:</span>
-                                    <span class="address">{{ deposit['Recipient'] }}</span>
-                                    
-                                    <span class="address-label">Query ID:</span>
-                                    <span class="address">{{ deposit['Query ID'] }}</span>
-                                    
-                                    <span class="address-label">Query Data:</span>
-                                    <span class="address">{{ deposit['Query Data'] }}</span>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                     const ctx = canvas.getContext('2d');
+                     const chartData = {{ chart_data | tojson }};
+                     
+                     console.log('Chart data:', chartData);
 
-    <!-- Withdrawals Section -->
-    <div id="withdrawals-section" class="table-section">
-        <div class="update-info">The data shown on this page is updated every 3 minutes. Most recent scan: {{ most_recent_scan }}</div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Withdraw ID</th>
-                        <th>Creator</th>
-                        <th>Claimed</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for withdrawal in withdrawals %}
-                    <!-- Main row -->
-                    <tr class="expandable-row {% if withdrawal['success'] %}success{% else %}failed{% endif %}">
-                        <td><span class="expand-indicator">▼</span>{{ withdrawal['withdraw_id'] }}</td>
-                        <td class="creator_address">{{ withdrawal['creator'] }}</td>
-                        <td>{{ withdrawal['Claimed'] }}</td>
-                    </tr>
-                    <!-- Details row -->
-                    <tr class="details-row {% if withdrawal['success'] %}success{% else %}failed{% endif %}">
-                        <td colspan="3">
-                            <div class="address-details">
-                                <div class="address-container">
-                                    <span class="address-label">Recipient:</span>
-                                    <span class="address">{{ withdrawal['recipient'] }}</span>
-                                    
-                                    <span class="address-label">Transaction Hash:</span>
-                                    <span class="address">{{ withdrawal['txhash'] }}</span>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                     if (!chartData || !chartData.individual_deposits || chartData.individual_deposits.length === 0) {
+                         console.log('No chart data available');
+                         // Show a message in the chart area
+                         const container = canvas.parentElement;
+                         container.innerHTML = '<div style="color: #666; text-align: center; padding: 2rem; font-style: italic;">No deposit data available for chart</div>';
+                         return;
+                     }
 
-    <!-- Block Time Section -->
-    <div id="block-time-section" class="table-section">
-        <div class="block-time-container">
-            <div class="block-time-title">Block Time Stats</div>
-            <div class="block-time-stats">
-                <div class="stat-item">
-                    <div class="stat-label">5 Minute Average Block Time: </div>
-                    <div class="stat-value">{{ block_time_stats.five_min }}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">30 Minute Average Block Time: </div>
-                    <div class="stat-value">{{ block_time_stats.thirty_min }}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">60 Minute Average Block Time: </div>
-                    <div class="stat-value">{{ block_time_stats.sixty_min }}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">24 Hour Average Block Time: </div>
-                    <div class="stat-value">{{ block_time_stats.day }}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">7 Day Average Block Time: </div>
-                    <div class="stat-value">{{ block_time_stats.week }}</div>
-                </div>
-            </div>
-            
-            <!-- Block Height Estimation Form -->
-            <div class="block-estimation-container">
-                <div class="block-time-title">Estimate Future Block Time</div>
-                <div class="block-estimation-form">
-                    <input type="number" id="blockHeightInput" placeholder="Enter future block height" min="1">
-                    <select id="timezoneSelect" class="timezone-select">
-                        <option value="">Browser's local time</option>
-                        <option value="UTC">UTC</option>
-                        <option value="America/New_York">US Eastern</option>
-                        <option value="America/Chicago">US Central</option>
-                        <option value="America/Denver">US Mountain</option>
-                        <option value="America/Los_Angeles">US Pacific</option>
-                        <option value="Europe/London">UK/Ireland</option>
-                        <option value="Europe/Paris">Central Europe</option>
-                        <option value="Asia/Tokyo">Japan</option>
-                        <option value="Asia/Shanghai">China</option>
-                        <option value="Australia/Sydney">Australia (East)</option>
-                    </select>
-                    <button id="calculateBlockTime" class="calculate-btn">Calculate</button>
-                </div>
-                <div id="blockEstimationResult" class="estimation-result">
-                    <!-- Results will be displayed here -->
-                </div>
-            </div>
-        </div>
-    </div>
+                     // Configure Chart.js with two datasets
+                     const chart = new Chart(ctx, {
+                         type: 'line',
+                         data: {
+                             datasets: [
+                                 {
+                                     label: 'Individual Deposits (TRB)',
+                                     data: chartData.individual_deposits,
+                                     borderColor: 'transparent',  // No line connecting points
+                                     backgroundColor: '#00ff88',
+                                     pointBackgroundColor: '#00ff88',
+                                     pointBorderColor: '#00ff88',
+                                     pointRadius: 6,
+                                     pointHoverRadius: 8,
+                                     showLine: false,  // This removes the line connecting points
+                                     fill: false
+                                 },
+                                 {
+                                     label: 'Cumulative Total (TRB)',
+                                     data: chartData.cumulative_deposits,
+                                     borderColor: '#a855f7',
+                                     backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                                     pointBackgroundColor: '#a855f7',
+                                     pointBorderColor: '#a855f7',
+                                     borderWidth: 3,
+                                     pointRadius: 3,
+                                     pointHoverRadius: 5,
+                                     fill: false,
+                                     tension: 0.1
+                                 }
+                             ]
+                         },
+                         options: {
+                             responsive: true,
+                             maintainAspectRatio: false,
+                             scales: {
+                                 x: {
+                                     type: 'time',
+                                     grid: {
+                                         color: '#333344'
+                                     },
+                                     ticks: {
+                                         color: '#00d4ff'
+                                     }
+                                 },
+                                 y: {
+                                     grid: {
+                                         color: '#333344'
+                                     },
+                                     ticks: {
+                                         color: '#00d4ff'
+                                     }
+                                 }
+                             },
+                             plugins: {
+                                 legend: {
+                                     labels: {
+                                         color: '#00d4ff'
+                                     }
+                                 },
+                                 tooltip: {
+                                     backgroundColor: 'rgba(26, 26, 46, 0.95)',
+                                     titleColor: '#00d4ff',
+                                     bodyColor: '#00ff88',
+                                     borderColor: '#333344',
+                                     borderWidth: 1,
+                                     callbacks: {
+                                         title: function(context) {
+                                             const point = context[0];
+                                             const datasetLabel = point.dataset.label;
+                                             
+                                             if (datasetLabel.includes('Individual')) {
+                                                 const deposit = chartData.individual_deposits[point.dataIndex];
+                                                 return `Deposit ID: ${deposit.deposit_id}`;
+                                             } else {
+                                                 const cumulative = chartData.cumulative_deposits[point.dataIndex];
+                                                 return `Cumulative Total (${cumulative.count} deposits)`;
+                                             }
+                                         },
+                                         label: function(context) {
+                                             const datasetLabel = context.dataset.label;
+                                             
+                                             if (datasetLabel.includes('Individual')) {
+                                                 const deposit = chartData.individual_deposits[context.dataIndex];
+                                                 return [
+                                                     `Amount: ${context.parsed.y.toFixed(4)} TRB`,
+                                                     `Date: ${deposit.formatted_date}`
+                                                 ];
+                                             } else {
+                                                 const cumulative = chartData.cumulative_deposits[context.dataIndex];
+                                                 return [
+                                                     `Total: ${context.parsed.y.toFixed(4)} TRB`,
+                                                     `Date: ${cumulative.formatted_date}`
+                                                 ];
+                                             }
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     });
+
+                     console.log('Chart created successfully');
+
+                 } catch (error) {
+                     console.error('Error creating chart:', error);
+                     const canvas = document.getElementById('depositsChart');
+                     if (canvas) {
+                         const container = canvas.parentElement;
+                         container.innerHTML = '<div style="color: #ff6b35; text-align: center; padding: 2rem;">Error loading chart: ' + error.message + '</div>';
+                     }
+                 }
+             }
+         });
+     </script>
 </body>
 </html> 

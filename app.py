@@ -10,6 +10,50 @@ from pathlib import Path
 
 app = Flask(__name__)
 
+def prepare_chart_data(deposits_df):
+    """Prepare deposits data for the chart visualization."""
+    try:
+        # Create a copy to avoid modifying the original
+        df = deposits_df.copy()
+        
+        # Sort by timestamp for proper chronological order
+        df = df.sort_values('Timestamp')
+        
+        # Prepare individual deposit data (scatter points)
+        individual_deposits = []
+        cumulative_total = 0
+        cumulative_data = []
+        
+        for _, row in df.iterrows():
+            # Individual deposit data
+            individual_deposits.append({
+                'x': row['Timestamp'].isoformat(),
+                'y': float(row['Amount']),
+                'deposit_id': int(row['Deposit ID']),
+                'formatted_date': row['Formatted_Timestamp']
+            })
+            
+            # Cumulative total data
+            cumulative_total += float(row['Amount'])
+            cumulative_data.append({
+                'x': row['Timestamp'].isoformat(),
+                'y': cumulative_total,
+                'count': len(cumulative_data) + 1,
+                'formatted_date': row['Formatted_Timestamp']
+            })
+        
+        return {
+            'individual_deposits': individual_deposits,
+            'cumulative_deposits': cumulative_data
+        }
+    
+    except Exception as e:
+        print(f"Error preparing chart data: {e}")
+        return {
+            'individual_deposits': [],
+            'cumulative_deposits': []
+        }
+
 @app.route('/')
 def show_deposits():
     # Read the deposits CSV file with Aggregate Timestamp as string
@@ -28,6 +72,13 @@ def show_deposits():
     
     # Convert timestamp columns to more readable format
     deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'])
+    deposits_df['Formatted_Timestamp'] = deposits_df['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+    
+    # Format Aggregate Timestamp for display
+    numeric_aggregate_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
+    deposits_df['Formatted_Aggregate_Timestamp'] = numeric_aggregate_timestamps.apply(
+        lambda x: datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S UTC') if pd.notna(x) else 'N/A'
+    )
     
     # Convert the large numbers to ETH format (divide by 10^18)
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
@@ -89,6 +140,9 @@ def show_deposits():
         print(f"Error reading withdrawals CSV: {e}")
         withdrawals = []
     
+    # Prepare chart data for deposits over time visualization
+    chart_data = prepare_chart_data(deposits_df)
+    
     # Convert DataFrames to list of dictionaries
     deposits = deposits_df.to_dict('records')
     
@@ -96,7 +150,8 @@ def show_deposits():
                           deposits=deposits, 
                           withdrawals=withdrawals, 
                           most_recent_scan=most_recent_scan,
-                          block_time_stats=block_time_stats)
+                          block_time_stats=block_time_stats,
+                          chart_data=chart_data)
 
 @app.route('/estimate-block', methods=['POST'])
 def estimate_block():
