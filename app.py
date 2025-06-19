@@ -25,22 +25,30 @@ def prepare_chart_data(deposits_df):
         cumulative_data = []
         
         for _, row in df.iterrows():
-            # Individual deposit data
-            individual_deposits.append({
-                'x': row['Timestamp'].isoformat(),
-                'y': float(row['Amount']),
-                'deposit_id': int(row['Deposit ID']),
-                'formatted_date': row['Formatted_Timestamp']
-            })
-            
-            # Cumulative total data
-            cumulative_total += float(row['Amount'])
-            cumulative_data.append({
-                'x': row['Timestamp'].isoformat(),
-                'y': cumulative_total,
-                'count': len(cumulative_data) + 1,
-                'formatted_date': row['Formatted_Timestamp']
-            })
+            try:
+                # Skip rows with invalid data
+                if pd.isna(row['Timestamp']) or pd.isna(row['Amount']):
+                    continue
+                    
+                # Individual deposit data
+                individual_deposits.append({
+                    'x': row['Timestamp'].isoformat(),
+                    'y': float(row['Amount']),
+                    'deposit_id': int(row['Deposit ID']),
+                    'formatted_date': row['Formatted_Timestamp']
+                })
+                
+                # Cumulative total data
+                cumulative_total += float(row['Amount'])
+                cumulative_data.append({
+                    'x': row['Timestamp'].isoformat(),
+                    'y': cumulative_total,
+                    'count': len(cumulative_data) + 1,
+                    'formatted_date': row['Formatted_Timestamp']
+                })
+            except Exception as e:
+                print(f"Error processing row {row.get('Deposit ID', 'unknown')}: {e}")
+                continue
         
         return {
             'individual_deposits': individual_deposits,
@@ -70,15 +78,41 @@ def show_deposits():
     # Filter out deposit IDs 27 and 32
     deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
     
-    # Convert timestamp columns to more readable format
-    deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'])
-    deposits_df['Formatted_Timestamp'] = deposits_df['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+    # Convert timestamp columns to more readable format with error handling
+    try:
+        deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'], errors='coerce')
+        # Remove rows with invalid timestamps
+        deposits_df = deposits_df.dropna(subset=['Timestamp'])
+        deposits_df['Formatted_Timestamp'] = deposits_df['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+    except Exception as e:
+        print(f"Error processing timestamps: {e}")
+        # Fallback: create dummy timestamps if all fail
+        deposits_df['Timestamp'] = pd.to_datetime('1970-01-01')
+        deposits_df['Formatted_Timestamp'] = '1970-01-01 00:00:00 UTC'
     
-    # Format Aggregate Timestamp for display
-    numeric_aggregate_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
-    deposits_df['Formatted_Aggregate_Timestamp'] = numeric_aggregate_timestamps.apply(
-        lambda x: datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S UTC') if pd.notna(x) else 'N/A'
-    )
+    # Format Aggregate Timestamp for display with error handling
+    try:
+        numeric_aggregate_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
+        
+        def safe_format_timestamp(x):
+            try:
+                if pd.notna(x) and x > 0:
+                    # Handle both seconds and milliseconds timestamps
+                    if x > 1e10:  # If timestamp is in milliseconds
+                        x = x / 1000
+                    # Check if year is reasonable (between 1970 and 2100)
+                    dt = datetime.fromtimestamp(x)
+                    if 1970 <= dt.year <= 2100:
+                        return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+                return 'N/A'
+            except (ValueError, OSError, OverflowError) as e:
+                print(f"Error formatting timestamp {x}: {e}")
+                return 'N/A'
+        
+        deposits_df['Formatted_Aggregate_Timestamp'] = numeric_aggregate_timestamps.apply(safe_format_timestamp)
+    except Exception as e:
+        print(f"Error processing aggregate timestamps: {e}")
+        deposits_df['Formatted_Aggregate_Timestamp'] = 'N/A'
     
     # Convert the large numbers to ETH format (divide by 10^18)
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
