@@ -60,3 +60,4 @@ bridge_deposits_txs.csv
 requester_addresses.csv
 layerd
 *.csv
+scan_time.json

@@ -5,6 +5,7 @@ import json
 import csv
 from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_claimed_deposit_ids
+from layerbot.utils.get_timestamp_from_height import get_timestamp_from_height
 import pandas as pd
 
 def load_abi():
@@ -74,7 +75,14 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
         return
         
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Get timestamp from block height
+    try:
+        block_timestamp = get_timestamp_from_height(deposit_info[4])
+        timestamp = block_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception as e:
+        print(f"Error getting timestamp for block height {deposit_info[4]}: {e}")
+        # Fallback to current time if we can't get block timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     # Generate query ID and data for this deposit
     query_info = generate_queryId(deposit_id)
