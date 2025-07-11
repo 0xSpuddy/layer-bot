@@ -15,11 +15,7 @@ def load_abi():
 
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""
-    csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
-    if not csv_file:
-        print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
-        return False
-        
+    csv_file = 'bridge_deposits.csv'    
     headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Aggregate Timestamp', 'Claimed', 'Query Data']
     
     try:
@@ -142,7 +138,7 @@ def update_withdrawal_status():
             print("Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
             return
             
-        contract = w3.eth.contract(address=contract_address, abi=abi)
+        contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
         
         # Read existing CSV file
         if not os.path.exists(csv_file):
@@ -233,7 +229,7 @@ def main():
         # Create contract instance
         print(f"Creating contract instance with address: {contract_address}")
         try:
-            contract = w3.eth.contract(address=contract_address, abi=abi)
+            contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
             print("Successfully created contract instance")
         except Exception as e:
             print(f"Error creating contract instance: {e}")
