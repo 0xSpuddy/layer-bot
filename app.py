@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import pandas as pd
 from datetime import datetime, timedelta
 from layerbot.utils.scan_time import get_last_scan_time
@@ -187,6 +187,13 @@ def show_deposits():
                           block_time_stats=block_time_stats,
                           chart_data=chart_data)
 
+# Routes for both root and /bridge- paths to work with reverse proxy
+@app.route('/bridge-/')
+@app.route('/')
+def show_deposits_bridge():
+    return show_deposits()
+
+@app.route('/bridge-/estimate-block', methods=['POST'])
 @app.route('/estimate-block', methods=['POST'])
 def estimate_block():
     try:
@@ -249,6 +256,11 @@ def estimate_block():
             'error': str(e),
             'traceback': traceback.format_exc()
         })
+
+# Add static file serving for /bridge- path
+@app.route('/bridge-/static/<path:filename>')
+def bridge_static(filename):
+    return send_from_directory(app.static_folder, filename)
 
 if __name__ == '__main__':
     app.run(debug=True) 
