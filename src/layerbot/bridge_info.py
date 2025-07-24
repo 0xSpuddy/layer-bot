@@ -6,6 +6,7 @@ import csv
 from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_claimed_deposit_ids
 from layerbot.utils.get_timestamp_from_height import get_timestamp_from_height
+from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts
 import pandas as pd
 
 def load_abi():
@@ -161,8 +162,12 @@ def update_withdrawal_status():
             is_claimed = check_withdrawal_status(w3, contract, withdraw_id)
             df.at[index, 'Claimed'] = is_claimed
             
-        # Reorder columns
-        column_order = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
+        # Reorder columns (include Amount column if it exists)
+        base_columns = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
+        if 'Amount' in df.columns:
+            column_order = base_columns + ['Amount']
+        else:
+            column_order = base_columns
         df = df[column_order]
             
         # Save updated CSV
@@ -238,6 +243,10 @@ def main():
         # Update withdrawal status
         print("\nUpdating withdrawal status...")
         update_withdrawal_status()
+        
+        # Update withdrawal amounts
+        print("\nUpdating withdrawal amounts...")
+        update_withdrawal_amounts()
         
         # 1. Get and print the most recent deposit ID
         print("\nAttempting to get deposit ID...")

@@ -66,7 +66,7 @@ def bridge_request():
                             default=default_amount,
                             show_default=True)
         
-        tip = 10000000000000000  # Hardcoded tip value
+        tip = 0  # Hardcoded tip value
         
         layer_recipient = click.prompt('What is the receiving address on Tellor Layer?', 
                                      type=str,
