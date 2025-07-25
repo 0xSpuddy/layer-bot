@@ -6,6 +6,8 @@ from layerbot.utils.block_time import get_block_time_stats
 from layerbot.commands.estimate_block_time import estimate
 import subprocess
 import json
+import os
+import argparse
 from pathlib import Path
 
 app = Flask(__name__)
@@ -188,12 +190,12 @@ def show_deposits():
                           chart_data=chart_data)
 
 # Routes for both root and /bridge- paths to work with reverse proxy
-@app.route('/bridge-/')
+@app.route('/bridge-palmito/')
 @app.route('/')
 def show_deposits_bridge():
     return show_deposits()
 
-@app.route('/bridge-/estimate-block', methods=['POST'])
+@app.route('/bridge-palmito/estimate-block', methods=['POST'])
 @app.route('/estimate-block', methods=['POST'])
 def estimate_block():
     try:
@@ -258,9 +260,26 @@ def estimate_block():
         })
 
 # Add static file serving for /bridge- path
-@app.route('/bridge-/static/<path:filename>')
+@app.route('/bridge-palmito/static/<path:filename>')
 def bridge_static(filename):
     return send_from_directory(app.static_folder, filename)
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run the Flask bridge monitoring app')
+    parser.add_argument('--port', '-p', type=int, 
+                       default=int(os.environ.get('FLASK_PORT', 5000)),
+                       help='Port to run the Flask app on (default: 5000, can also be set via FLASK_PORT env var)')
+    parser.add_argument('--host', type=str,
+                       default=os.environ.get('FLASK_HOST', '127.0.0.1'),
+                       help='Host to bind the Flask app to (default: 127.0.0.1, can also be set via FLASK_HOST env var)')
+    parser.add_argument('--debug', action='store_true',
+                       default=os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1', 'yes'],
+                       help='Run in debug mode (default: True, can also be set via FLASK_DEBUG env var)')
+    
+    args = parser.parse_args()
+    
+    print(f"Starting Flask app on {args.host}:{args.port}")
+    print(f"Debug mode: {args.debug}")
+    
+    app.run(host=args.host, port=args.port, debug=args.debug) 
