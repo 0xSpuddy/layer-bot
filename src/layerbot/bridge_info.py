@@ -6,6 +6,7 @@ import csv
 from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_claimed_deposit_ids
 from layerbot.utils.get_timestamp_from_height import get_timestamp_from_height
+from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts
 import pandas as pd
 
 def load_abi():
@@ -15,11 +16,7 @@ def load_abi():
 
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""
-    csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
-    if not csv_file:
-        print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
-        return False
-        
+    csv_file = 'bridge_deposits.csv'    
     headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Aggregate Timestamp', 'Claimed', 'Query Data']
     
     try:
@@ -142,7 +139,7 @@ def update_withdrawal_status():
             print("Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
             return
             
-        contract = w3.eth.contract(address=contract_address, abi=abi)
+        contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
         
         # Read existing CSV file
         if not os.path.exists(csv_file):
@@ -165,8 +162,12 @@ def update_withdrawal_status():
             is_claimed = check_withdrawal_status(w3, contract, withdraw_id)
             df.at[index, 'Claimed'] = is_claimed
             
-        # Reorder columns
-        column_order = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
+        # Reorder columns (include Amount column if it exists)
+        base_columns = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
+        if 'Amount' in df.columns:
+            column_order = base_columns + ['Amount']
+        else:
+            column_order = base_columns
         df = df[column_order]
             
         # Save updated CSV
@@ -233,7 +234,7 @@ def main():
         # Create contract instance
         print(f"Creating contract instance with address: {contract_address}")
         try:
-            contract = w3.eth.contract(address=contract_address, abi=abi)
+            contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
             print("Successfully created contract instance")
         except Exception as e:
             print(f"Error creating contract instance: {e}")
@@ -242,6 +243,10 @@ def main():
         # Update withdrawal status
         print("\nUpdating withdrawal status...")
         update_withdrawal_status()
+        
+        # Update withdrawal amounts
+        print("\nUpdating withdrawal amounts...")
+        update_withdrawal_amounts()
         
         # 1. Get and print the most recent deposit ID
         print("\nAttempting to get deposit ID...")

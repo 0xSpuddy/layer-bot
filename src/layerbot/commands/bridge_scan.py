@@ -3,6 +3,7 @@ from ..utils.query_layer import get_claimed_deposit_ids, get_withdraw_tokens_txs
 from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
 from ..bridge_info import main as scan_bridge_contract, update_withdrawal_status
 from ..utils.scan_time import update_scan_time
+from ..utils.query_withdrawal_txs import update_withdrawal_amounts
 
 @click.group()
 def bridge_scan():
@@ -39,6 +40,10 @@ def withdrawals():
     
     # Update withdrawal status
     update_withdrawal_status()
+    
+    # Update withdrawal amounts by querying individual transactions
+    print("\nUpdating withdrawal amounts...")
+    update_withdrawal_amounts()
     
     # Update the scan time
     scan_time = update_scan_time()
