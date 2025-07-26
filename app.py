@@ -64,6 +64,58 @@ def prepare_chart_data(deposits_df):
             'cumulative_deposits': []
         }
 
+def prepare_withdrawals_chart_data(withdrawals_df):
+    """Prepare withdrawals data for the chart visualization."""
+    try:
+        # Create a copy to avoid modifying the original
+        df = withdrawals_df.copy()
+        
+        # Sort by timestamp for proper chronological order
+        df = df.sort_values('Timestamp')
+        
+        # Prepare individual withdrawal data (scatter points)
+        individual_withdrawals = []
+        cumulative_total = 0
+        cumulative_data = []
+        
+        for _, row in df.iterrows():
+            try:
+                # Skip rows with invalid data
+                if pd.isna(row['Timestamp']) or pd.isna(row['Amount_TRB']):
+                    continue
+                    
+                # Individual withdrawal data
+                individual_withdrawals.append({
+                    'x': row['Timestamp'].isoformat(),
+                    'y': float(row['Amount_TRB']),
+                    'withdraw_id': int(row['withdraw_id']),
+                    'formatted_date': row['Formatted_Timestamp']
+                })
+                
+                # Cumulative total data
+                cumulative_total += float(row['Amount_TRB'])
+                cumulative_data.append({
+                    'x': row['Timestamp'].isoformat(),
+                    'y': cumulative_total,
+                    'count': len(cumulative_data) + 1,
+                    'formatted_date': row['Formatted_Timestamp']
+                })
+            except Exception as e:
+                print(f"Error processing withdrawal row {row.get('withdraw_id', 'unknown')}: {e}")
+                continue
+        
+        return {
+            'individual_withdrawals': individual_withdrawals,
+            'cumulative_withdrawals': cumulative_data
+        }
+    
+    except Exception as e:
+        print(f"Error preparing withdrawals chart data: {e}")
+        return {
+            'individual_withdrawals': [],
+            'cumulative_withdrawals': []
+        }
+
 @app.route('/')
 def show_deposits():
     # Read the deposits CSV file with Aggregate Timestamp as string
@@ -212,6 +264,9 @@ def show_deposits():
     # Prepare chart data for deposits over time visualization (using unfiltered data)
     chart_data = prepare_chart_data(chart_deposits_df)
     
+    # Prepare withdrawals chart data
+    withdrawals_chart_data = prepare_withdrawals_chart_data(pd.DataFrame(withdrawals))
+    
     # Convert DataFrames to list of dictionaries
     deposits = deposits_df.to_dict('records')
     
@@ -220,7 +275,8 @@ def show_deposits():
                           withdrawals=withdrawals, 
                           most_recent_scan=most_recent_scan,
                           block_time_stats=block_time_stats,
-                          chart_data=chart_data)
+                          chart_data=chart_data,
+                          withdrawals_chart_data=withdrawals_chart_data)
 
 # Routes for both root and /bridge- paths to work with reverse proxy
 @app.route('/bridge-palmito/')

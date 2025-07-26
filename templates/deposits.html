@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Serialized chart data for JS to consume -->
     <script id="chart-data" type="application/json">{{ chart_data | tojson | safe }}</script>
+    <script id="withdrawals-chart-data" type="application/json">{{ withdrawals_chart_data | tojson | safe }}</script>
     <style>
         /* Additional custom styles for our specific components */
         .tab-navigation {
@@ -487,6 +488,24 @@
 
                 <!-- Withdrawals Tab Content -->
                 <div id="withdrawals-section" class="tab-content">
+                    <!-- Withdrawals Over Time Chart -->
+                    <div class="data-section withdrawals-chart" style="margin-bottom: 2rem;">
+                        <div class="data-header">
+                            <div class="data-header-left">
+                                <h3><i class="fas fa-chart-line"></i> Withdrawals Over Time</h3>
+                                <div class="header-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Withdrawals</span>
+                                        <span class="stat-value" id="totalWithdrawals">{{ withdrawals|length }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="withdrawalsChart"></canvas>
+                        </div>
+                    </div>
+
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -676,6 +695,14 @@
                     btn.classList.add('active');
                     const targetId = btn.getAttribute('data-target');
                     document.getElementById(targetId).classList.add('active');
+                    
+                    // Initialize charts when their tabs are activated
+                    if (targetId === 'withdrawals-section') {
+                        // Small delay to ensure the tab content is visible before rendering chart
+                        setTimeout(() => {
+                            initializeWithdrawalsChart();
+                        }, 100);
+                    }
                 });
             });
 
@@ -947,6 +974,182 @@
                      }
                  }
              }
+
+             // Initialize withdrawals chart
+             let withdrawalsChartInstance = null;
+             function initializeWithdrawalsChart() {
+                 try {
+                     const canvas = document.getElementById('withdrawalsChart');
+                     if (!canvas) {
+                         console.error('Withdrawals canvas element not found');
+                         return;
+                     }
+
+                     // Destroy existing chart if it exists
+                     if (withdrawalsChartInstance) {
+                         withdrawalsChartInstance.destroy();
+                         withdrawalsChartInstance = null;
+                     }
+
+                     const ctx = canvas.getContext('2d');
+                     // Retrieve and parse the pre-rendered chart data from the dedicated script tag
+                     const chartDataElement = document.getElementById('withdrawals-chart-data');
+                     const chartData = chartDataElement ? JSON.parse(chartDataElement.textContent) : null;
+                     
+                     console.log('Withdrawals chart data:', chartData);
+
+                     if (!chartData || !chartData.individual_withdrawals || chartData.individual_withdrawals.length === 0) {
+                         console.log('No withdrawals chart data available');
+                         // Show a message in the chart area
+                         const container = canvas.parentElement;
+                         container.innerHTML = '<div style="color: #666; text-align: center; padding: 2rem; font-style: italic;">No withdrawal data available for chart</div>';
+                         return;
+                     }
+
+                     // Configure Chart.js with two datasets
+                     withdrawalsChartInstance = new Chart(ctx, {
+                         type: 'line',
+                         data: {
+                             datasets: [
+                                 {
+                                     label: 'Individual Withdrawals (TRB)',
+                                     data: chartData.individual_withdrawals,
+                                     borderColor: 'transparent',  // No line connecting points
+                                     backgroundColor: '#ff6b35',
+                                     pointBackgroundColor: '#ff6b35',
+                                     pointBorderColor: '#ff6b35',
+                                     pointRadius: 6,
+                                     pointHoverRadius: 8,
+                                     showLine: false,  // This removes the line connecting points
+                                     fill: false
+                                 },
+                                 {
+                                     label: 'Cumulative Total (TRB)',
+                                     data: chartData.cumulative_withdrawals,
+                                     borderColor: '#e74c3c',
+                                     backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                     pointBackgroundColor: '#e74c3c',
+                                     pointBorderColor: '#e74c3c',
+                                     borderWidth: 3,
+                                     pointRadius: 3,
+                                     pointHoverRadius: 5,
+                                     fill: false,
+                                     tension: 0.1
+                                 }
+                             ]
+                         },
+                         options: {
+                             responsive: true,
+                             maintainAspectRatio: false,
+                             scales: {
+                                 x: {
+                                     type: 'time',
+                                     min: chartData.individual_withdrawals.length > 0 ? chartData.individual_withdrawals[0].x : undefined,
+                                     max: new Date().toISOString(),
+                                     time: {
+                                         unit: 'day',
+                                         displayFormats: {
+                                             day: 'MMM dd',
+                                             hour: 'MMM dd HH:mm'
+                                         },
+                                         tooltipFormat: 'MMM dd, yyyy HH:mm'
+                                     },
+                                     grid: {
+                                         color: '#333344'
+                                     },
+                                     ticks: {
+                                         color: '#00d4ff',
+                                         maxTicksLimit: 8,
+                                         source: 'auto'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Date',
+                                         color: '#00d4ff',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 },
+                                 y: {
+                                     grid: {
+                                         color: '#333344'
+                                     },
+                                     ticks: {
+                                         color: '#00d4ff'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Amount (TRB)',
+                                         color: '#00d4ff',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 }
+                             },
+                             plugins: {
+                                 legend: {
+                                     labels: {
+                                         color: '#00d4ff'
+                                     }
+                                 },
+                                 tooltip: {
+                                     backgroundColor: 'rgba(26, 26, 46, 0.95)',
+                                     titleColor: '#00d4ff',
+                                     bodyColor: '#ff6b35',
+                                     borderColor: '#333344',
+                                     borderWidth: 1,
+                                     callbacks: {
+                                         title: function(context) {
+                                             const point = context[0];
+                                             const datasetLabel = point.dataset.label;
+                                             
+                                             if (datasetLabel.includes('Individual')) {
+                                                 const withdrawal = chartData.individual_withdrawals[point.dataIndex];
+                                                 return `Withdrawal ID: ${withdrawal.withdraw_id}`;
+                                             } else {
+                                                 const cumulative = chartData.cumulative_withdrawals[point.dataIndex];
+                                                 return `Cumulative Total (${cumulative.count} withdrawals)`;
+                                             }
+                                         },
+                                         label: function(context) {
+                                             const datasetLabel = context.dataset.label;
+                                             
+                                             if (datasetLabel.includes('Individual')) {
+                                                 const withdrawal = chartData.individual_withdrawals[context.dataIndex];
+                                                 return [
+                                                     `Amount: ${context.parsed.y.toFixed(6)} TRB`,
+                                                     `Date: ${withdrawal.formatted_date}`
+                                                 ];
+                                             } else {
+                                                 const cumulative = chartData.cumulative_withdrawals[context.dataIndex];
+                                                 return [
+                                                     `Total: ${context.parsed.y.toFixed(6)} TRB`,
+                                                     `Date: ${cumulative.formatted_date}`
+                                                 ];
+                                             }
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     });
+
+                     console.log('Withdrawals chart created successfully');
+
+                 } catch (error) {
+                     console.error('Error creating withdrawals chart:', error);
+                     const canvas = document.getElementById('withdrawalsChart');
+                     if (canvas) {
+                         const container = canvas.parentElement;
+                         container.innerHTML = '<div style="color: #ff6b35; text-align: center; padding: 2rem;">Error loading chart: ' + error.message + '</div>';
+                     }
+                 }
+             }
+
          });
      </script>
 </body>
