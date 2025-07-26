@@ -77,10 +77,7 @@ def show_deposits():
     # Get block time statistics
     block_time_stats = get_block_time_stats()
     
-    # Filter out deposit IDs 27 and 32
-    deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
-    
-    # Convert timestamp columns to more readable format with error handling
+    # Convert timestamp columns to more readable format with error handling (for all data)
     try:
         deposits_df['Timestamp'] = pd.to_datetime(deposits_df['Timestamp'], errors='coerce')
         # Remove rows with invalid timestamps
@@ -91,6 +88,12 @@ def show_deposits():
         # Fallback: create dummy timestamps if all fail
         deposits_df['Timestamp'] = pd.to_datetime('1970-01-01')
         deposits_df['Formatted_Timestamp'] = '1970-01-01 00:00:00 UTC'
+    
+    # Keep original data for chart (after timestamp processing, before filtering)
+    chart_deposits_df = deposits_df.copy()
+    
+    # Filter out deposit IDs 27 and 32 for table display only
+    deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
     
     # Format Aggregate Timestamp for display with error handling
     try:
@@ -116,8 +119,9 @@ def show_deposits():
         print(f"Error processing aggregate timestamps: {e}")
         deposits_df['Formatted_Aggregate_Timestamp'] = 'N/A'
     
-    # Convert the large numbers to ETH format (divide by 10^18)
+    # Convert the large numbers to ETH format (divide by 10^18) for both datasets
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
+    chart_deposits_df['Amount'] = chart_deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
     
     # Calculate which rows need highlighting
     current_time = datetime.now().timestamp()
@@ -158,6 +162,24 @@ def show_deposits():
     try:
         withdrawals_df = pd.read_csv('bridge_withdrawals.csv')
         
+        # Handle timestamp column if it exists
+        if 'Timestamp' in withdrawals_df.columns:
+            try:
+                withdrawals_df['Timestamp'] = pd.to_datetime(withdrawals_df['Timestamp'], errors='coerce')
+                # Remove rows with invalid timestamps in the Timestamp column
+                valid_timestamp_mask = withdrawals_df['Timestamp'].notna()
+                
+                # For rows with valid timestamps, format them nicely
+                withdrawals_df.loc[valid_timestamp_mask, 'Formatted_Timestamp'] = withdrawals_df.loc[valid_timestamp_mask, 'Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+                # For rows with invalid timestamps, set to 'N/A'
+                withdrawals_df.loc[~valid_timestamp_mask, 'Formatted_Timestamp'] = 'N/A'
+            except Exception as e:
+                print(f"Error processing withdrawal timestamps: {e}")
+                withdrawals_df['Formatted_Timestamp'] = 'N/A'
+        else:
+            # If no Timestamp column exists, create a placeholder
+            withdrawals_df['Formatted_Timestamp'] = 'N/A'
+        
         # Handle withdraw_id column
         if withdrawals_df['withdraw_id'].dtype == 'object':
             # If it's a string, clean it up
@@ -169,6 +191,17 @@ def show_deposits():
         withdrawals_df['success'] = withdrawals_df['success'].astype(bool)
         withdrawals_df['Claimed'] = withdrawals_df['Claimed'].astype(bool)
         
+        # Convert Amount to TRB format if it exists (divide by 10^6 for loya to TRB conversion)
+        if 'Amount' in withdrawals_df.columns:
+            try:
+                withdrawals_df['Amount'] = pd.to_numeric(withdrawals_df['Amount'], errors='coerce')
+                withdrawals_df['Amount_TRB'] = withdrawals_df['Amount'] / 1e6  # Convert loya to TRB
+            except Exception as e:
+                print(f"Error processing withdrawal amounts: {e}")
+                withdrawals_df['Amount_TRB'] = 0
+        else:
+            withdrawals_df['Amount_TRB'] = 0
+        
         # Sort by withdraw_id in descending order
         withdrawals_df = withdrawals_df.sort_values('withdraw_id', ascending=False)
         withdrawals = withdrawals_df.to_dict('records')
@@ -176,8 +209,8 @@ def show_deposits():
         print(f"Error reading withdrawals CSV: {e}")
         withdrawals = []
     
-    # Prepare chart data for deposits over time visualization
-    chart_data = prepare_chart_data(deposits_df)
+    # Prepare chart data for deposits over time visualization (using unfiltered data)
+    chart_data = prepare_chart_data(chart_deposits_df)
     
     # Convert DataFrames to list of dictionaries
     deposits = deposits_df.to_dict('records')

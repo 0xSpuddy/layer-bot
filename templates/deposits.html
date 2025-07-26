@@ -6,7 +6,7 @@
     <title>Tellor Monitor Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/bridge-/static/example_style.css">
+    <link rel="stylesheet" href="/bridge-palmito/static/example_style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Serialized chart data for JS to consume -->
@@ -492,18 +492,42 @@
                             <thead>
                                 <tr>
                                     <th><i class="fas fa-hashtag"></i> Withdraw ID</th>
+                                    <th><i class="fas fa-coins"></i> Amount (TRB)</th>
+                                    <th><i class="fas fa-calendar-alt"></i> Withdrawal Date/Time</th>
                                     <th><i class="fas fa-user"></i> Creator</th>
+                                    <th><i class="fas fa-check-circle"></i> Success</th>
                                     <th><i class="fas fa-check-circle"></i> Claimed</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for withdrawal in withdrawals %}
-                                <tr class="expandable-row {% if withdrawal['success'] %}ready-to-claim{% else %}invalid-recipient{% endif %}">
+                                <tr class="expandable-row {% if withdrawal['success'] %}ready-to-claim{% else %}invalid-recipient{% endif %} {% if withdrawal['Claimed'] %}claimed-row{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ withdrawal['withdraw_id'] }}</span>
                                     </td>
+                                    <td class="value">
+                                        {% if withdrawal.get('Amount_TRB') and withdrawal['Amount_TRB'] > 0 %}
+                                            {{ "%.6f"|format(withdrawal['Amount_TRB']) }}
+                                        {% else %}
+                                            <span style="color: #666; font-style: italic;">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="time-ago">
+                                        {% if withdrawal.get('Formatted_Timestamp') and withdrawal['Formatted_Timestamp'] != 'N/A' %}
+                                            {{ withdrawal['Formatted_Timestamp'] }}
+                                        {% else %}
+                                            <span style="color: #666; font-style: italic;">N/A</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="reporter">{{ withdrawal['creator'] }}</td>
+                                    <td>
+                                        {% if withdrawal['success'] %}
+                                            <span class="badge badge-success">Yes</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">No</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if withdrawal['Claimed'] %}
                                             <span class="badge badge-success">Yes</span>
@@ -512,10 +536,14 @@
                                         {% endif %}
                                     </td>
                                 </tr>
-                                <tr class="details-row">
-                                    <td colspan="3">
+                                <tr class="details-row {% if withdrawal['Claimed'] %}claimed-row{% endif %}">
+                                    <td colspan="6">
                                         <div class="address-details">
                                             <div class="address-container">
+                                                <div class="address-item">
+                                                    <span class="address-label">Creator</span>
+                                                    <span class="address-value">{{ withdrawal['creator'] }}</span>
+                                                </div>
                                                 <div class="address-item">
                                                     <span class="address-label">Recipient</span>
                                                     <span class="address-value">{{ withdrawal['recipient'] }}</span>
@@ -524,6 +552,12 @@
                                                     <span class="address-label">Transaction Hash</span>
                                                     <span class="address-value">{{ withdrawal['txhash'] }}</span>
                                                 </div>
+                                                {% if withdrawal.get('Amount') %}
+                                                <div class="address-item">
+                                                    <span class="address-label">Amount (Raw)</span>
+                                                    <span class="address-value">{{ withdrawal['Amount'] }} loya</span>
+                                                </div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </td>
@@ -697,7 +731,7 @@
                 }
                 
                 // Make the AJAX request
-                fetch('/bridge-/estimate-block', {
+                fetch('/bridge-palmito/estimate-block', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

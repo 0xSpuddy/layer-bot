@@ -14,6 +14,40 @@ def load_abi():
     with open('contracts/bridge_abi.json', 'r') as f:
         return json.load(f)
 
+def get_deposit_timestamps_from_ethereum(w3, contract):
+    """
+    Get deposit timestamps from Ethereum Deposit events.
+    Returns a dictionary mapping deposit_id -> timestamp
+    """
+    deposit_timestamps = {}
+    
+    try:
+        # Get all Deposit events from the contract
+        print("Fetching Deposit events from Ethereum...")
+        
+        # Get the event filter for Deposit events
+        deposit_event_filter = contract.events.Deposit.create_filter(fromBlock=0, toBlock='latest')
+        deposit_events = deposit_event_filter.get_all_entries()
+        
+        print(f"Found {len(deposit_events)} Deposit events")
+        
+        for event in deposit_events:
+            deposit_id = event['args']['_depositId']
+            block_number = event['blockNumber']
+            
+            # Get the block to get the timestamp
+            block = w3.eth.get_block(block_number)
+            timestamp = datetime.fromtimestamp(block['timestamp'])
+            
+            deposit_timestamps[deposit_id] = timestamp
+            
+        print(f"Collected timestamps for {len(deposit_timestamps)} deposits")
+        
+    except Exception as e:
+        print(f"Error fetching deposit timestamps from Ethereum: {e}")
+        
+    return deposit_timestamps
+
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""
     csv_file = 'bridge_deposits.csv'    
@@ -65,21 +99,21 @@ def get_existing_deposit_ids():
     return existing_ids
 
 
-def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
-    """Save deposit information to CSV file."""
+def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=False):
+    """Save deposit information to CSV file using Ethereum transaction timestamp."""
     csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
     if not csv_file:
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
         return
         
-    # Get timestamp from block height
-    try:
-        block_timestamp = get_timestamp_from_height(deposit_info[4])
-        timestamp = block_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-    except Exception as e:
-        print(f"Error getting timestamp for block height {deposit_info[4]}: {e}")
-        # Fallback to current time if we can't get block timestamp
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Get timestamp from Ethereum transaction instead of Tellor Layer block height
+    timestamp_str = ''
+    if deposit_id in deposit_timestamps:
+        timestamp_str = deposit_timestamps[deposit_id].strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Using Ethereum transaction timestamp for deposit {deposit_id}: {timestamp_str}")
+    else:
+        print(f"Warning: No Ethereum transaction timestamp found for deposit {deposit_id}, using current time as fallback")
+        timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     # Generate query ID and data for this deposit
     query_info = generate_queryId(deposit_id)
@@ -87,7 +121,7 @@ def save_deposit_to_csv(deposit_id, deposit_info, claimed=False):
     with open(csv_file, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
-            timestamp,
+            timestamp_str,
             deposit_id,
             deposit_info[0],
             deposit_info[1],
@@ -248,6 +282,15 @@ def main():
         print("\nUpdating withdrawal amounts...")
         update_withdrawal_amounts()
         
+        # Update withdrawal timestamps
+        print("\nUpdating withdrawal timestamps...")
+        from layerbot.utils.query_withdrawal_txs import update_withdrawal_timestamps
+        update_withdrawal_timestamps()
+        
+        # Get deposit timestamps from Ethereum
+        print("\nGetting deposit timestamps from Ethereum...")
+        deposit_timestamps = get_deposit_timestamps_from_ethereum(w3, contract)
+        
         # 1. Get and print the most recent deposit ID
         print("\nAttempting to get deposit ID...")
         try:
@@ -305,7 +348,7 @@ def main():
                     print(f"Query ID: {query_info['queryId']}")
                     
                     # Save to CSV
-                    save_deposit_to_csv(current_deposit_id, deposit_info, is_claimed)
+                    save_deposit_to_csv(current_deposit_id, deposit_info, deposit_timestamps, is_claimed)
                     new_deposits += 1
                 
                 current_deposit_id += 1

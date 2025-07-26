@@ -1,36 +1,35 @@
 import click
-from ..utils.query_layer import get_claimed_deposit_ids, get_withdraw_tokens_txs
-from ..utils.query_bridge_reports import update_bridge_deposits_timestamps
-from ..bridge_info import main as scan_bridge_contract, update_withdrawal_status
-from ..utils.scan_time import update_scan_time
-from ..utils.query_withdrawal_txs import update_withdrawal_amounts
+from layerbot.utils.query_layer import get_claimed_deposit_ids, get_withdraw_tokens_txs
+from layerbot.utils.query_bridge_reports import update_bridge_deposits_timestamps
+from layerbot.bridge_info import update_withdrawal_status
+from layerbot.utils.scan_time import update_scan_time
+from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts, update_withdrawal_timestamps
 
 @click.group()
 def bridge_scan():
-    """Scan bridge-related transactions"""
+    """Bridge scanning commands"""
     pass
 
 @bridge_scan.command()
 def deposits():
-    """Scan for bridge deposit claims"""
-    # 1. First scan the bridge contract for new deposits
-    print("\nScanning bridge contract for new deposits...")
-    scan_bridge_contract()
-    
-    # 2. Get claimed deposit IDs to update final status
-    print("\nUpdating claimed status...")
-    get_claimed_deposit_ids()
+    """Scan for new bridge deposits"""
+    # Run the main function from bridge_info.py
+    from layerbot.bridge_info import main as run_deposits_scan
+    run_deposits_scan()
 
-    # 3. Update Aggregate Timestamps from oracle data
-    print("\nUpdating Aggregate Timestamps...")
-    update_bridge_deposits_timestamps()
+@bridge_scan.command()
+def report_status():
+    """Update the claimed status of deposits"""
+    print("\nUpdating claimed status of deposits...")
+    from layerbot.utils.query_layer import update_claimed_status_csv
+    update_claimed_status_csv()
     
     # Update the scan time
     scan_time = update_scan_time()
     if scan_time:
         print(f"\nScan completed at: {scan_time}")
-    
-    print("Done scanning deposits")
+        
+    print("Done updating deposit claimed status")
 
 @bridge_scan.command()
 def withdrawals():
@@ -44,6 +43,10 @@ def withdrawals():
     # Update withdrawal amounts by querying individual transactions
     print("\nUpdating withdrawal amounts...")
     update_withdrawal_amounts()
+    
+    # Update withdrawal timestamps by querying individual transactions
+    print("\nUpdating withdrawal timestamps...")
+    update_withdrawal_timestamps()
     
     # Update the scan time
     scan_time = update_scan_time()

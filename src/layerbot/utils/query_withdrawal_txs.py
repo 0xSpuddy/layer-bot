@@ -2,6 +2,7 @@ import os
 import subprocess
 import json
 import pandas as pd
+from datetime import datetime
 from dotenv import load_dotenv
 
 def query_transaction_details(tx_hash):
@@ -12,7 +13,7 @@ def query_transaction_details(tx_hash):
         tx_hash (str): The transaction hash to query
         
     Returns:
-        dict: Transaction details including the amount, or None if error
+        dict: Transaction details including the amount and timestamp, or None if error
     """
     try:
         # Load environment variables
@@ -42,9 +43,22 @@ def query_transaction_details(tx_hash):
                     # Extract just the numeric part (remove 'loya' suffix if present)
                     amount = amount_str.replace('loya', '').strip()
         
+        # Extract timestamp from raw_data.timestamp (not tx_response.timestamp)
+        timestamp = None
+        timestamp_str = None
+        if 'timestamp' in tx_data:
+            timestamp_str = tx_data['timestamp']
+            try:
+                # Parse ISO format timestamp (e.g., "2024-12-23T10:30:45Z")
+                timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            except Exception as e:
+                print(f"Error parsing timestamp {timestamp_str}: {e}")
+        
         return {
             'tx_hash': tx_hash,
             'amount': amount,
+            'timestamp': timestamp,
+            'timestamp_str': timestamp_str,
             'raw_data': tx_data
         }
         
@@ -115,6 +129,76 @@ def update_withdrawal_amounts():
         print(f"Error updating withdrawal amounts: {e}")
         return False
 
+def update_withdrawal_timestamps():
+    """
+    Read the bridge_withdrawals.csv file, query each transaction for timestamp details,
+    and update the CSV with the timestamp information.
+    
+    Returns:
+        bool: True if successful, False if error
+    """
+    try:
+        # Load environment variables
+        load_dotenv()
+        
+        # Get the CSV file path from environment
+        csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV', 'bridge_withdrawals.csv')
+        
+        if not os.path.exists(csv_file):
+            print(f"Withdrawals CSV file not found: {csv_file}")
+            return False
+            
+        # Read the CSV file
+        df = pd.read_csv(csv_file)
+        
+        # Check if we already have a 'Timestamp' column
+        if 'Timestamp' not in df.columns:
+            # Insert Timestamp as the first column
+            df.insert(0, 'Timestamp', '')
+        
+        # Ensure Timestamp column is string type to avoid dtype warnings
+        df['Timestamp'] = df['Timestamp'].astype(str)
+        
+        # Query each transaction that doesn't have a timestamp yet
+        updated_count = 0
+        for index, row in df.iterrows():
+            tx_hash = row.get('txhash')
+            current_timestamp = row.get('Timestamp', '')
+            
+            # Skip if we already have a timestamp for this transaction
+            # Check for both empty strings, NaN values, and 'nan' strings
+            if (pd.notna(current_timestamp) and 
+                current_timestamp != '' and 
+                current_timestamp != 'nan'):
+                continue
+                
+            if tx_hash and tx_hash != '':
+                print(f"Querying transaction {tx_hash} for timestamp...")
+                tx_details = query_transaction_details(tx_hash)
+                
+                if tx_details and tx_details['timestamp']:
+                    timestamp_str = tx_details['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                    df.at[index, 'Timestamp'] = timestamp_str
+                    updated_count += 1
+                    print(f"Updated transaction {tx_hash} with timestamp: {timestamp_str}")
+                else:
+                    print(f"Could not get timestamp for transaction {tx_hash}")
+        
+        # Reorder columns to ensure Timestamp is first
+        if 'Timestamp' in df.columns:
+            columns = ['Timestamp'] + [col for col in df.columns if col != 'Timestamp']
+            df = df[columns]
+        
+        # Save updated CSV
+        df.to_csv(csv_file, index=False)
+        print(f"Updated {updated_count} withdrawal timestamps in {csv_file}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error updating withdrawal timestamps: {e}")
+        return False
+
 def main():
     """Example usage and testing function."""
     # Test with a specific transaction hash
@@ -126,6 +210,8 @@ def main():
     if result:
         print(f"Transaction Hash: {result['tx_hash']}")
         print(f"Amount: {result['amount']}")
+        print(f"Timestamp: {result['timestamp']}")
+        print(f"Timestamp String: {result['timestamp_str']}")
     else:
         print("Failed to query transaction")
     
@@ -136,6 +222,14 @@ def main():
         print("Successfully updated withdrawal amounts")
     else:
         print("Failed to update withdrawal amounts")
+    
+    # Test updating all withdrawal timestamps
+    print("\nUpdating all withdrawal timestamps...")
+    success = update_withdrawal_timestamps()
+    if success:
+        print("Successfully updated withdrawal timestamps")
+    else:
+        print("Failed to update withdrawal timestamps")
 
 if __name__ == "__main__":
     main()
