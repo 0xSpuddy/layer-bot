@@ -21,14 +21,39 @@ from layerbot.commands import track_block_time
 from layerbot.commands.estimate_block_time import estimate
 from layerbot.commands.manage_block_data import cli as manage_block_data_cli
 from layerbot.commands.report_test_value import report_test_value
+import importlib
 
-@click.group()
-def cli():
+@click.group(invoke_without_command=True)
+@click.option('--auto-tipper', nargs=2, metavar='QUERY_DATA INTERVAL', 
+              help='Run auto-tipper with specified query data and interval (in seconds)')
+@click.pass_context
+def cli(ctx, auto_tipper):
     """LayerBot - A tool for monitoring Layer bridge deposits"""
     # Set RPC URL if not already set
     if not os.getenv("LAYER_RPC_URL"):
         os.environ["LAYER_RPC_URL"] = "https://rpc.layer.exchange"
-    pass
+    
+    # Handle auto-tipper flag
+    if auto_tipper:
+        query_data, interval = auto_tipper
+        try:
+            interval = int(interval)
+        except ValueError:
+            click.echo(click.style("Error: Interval must be a valid integer", fg='red'))
+            sys.exit(1)
+        
+        # Import and call auto_tipper function directly
+        auto_tipper_module = importlib.import_module('layerbot.commands.auto-tipper')
+        auto_tipper_func = auto_tipper_module.auto_tipper
+        
+        # Create a context and invoke the function
+        auto_ctx = click.Context(auto_tipper_func)
+        auto_ctx.invoke(auto_tipper_func, query_data=query_data, interval=interval)
+        sys.exit(0)
+    
+    # If no auto-tipper flag and no command, show help
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 @click.command('bridge-monitor')
 def bridge_monitor():
