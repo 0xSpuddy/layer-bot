@@ -31,7 +31,8 @@ def cli(ctx, auto_tipper):
     """LayerBot - A tool for monitoring Layer bridge deposits"""
     # Set RPC URL if not already set
     if not os.getenv("LAYER_RPC_URL"):
-        os.environ["LAYER_RPC_URL"] = "https://rpc.layer.exchange"
+        click.echo(click.style("Error: LAYER_RPC_URL is not set", fg='red'))
+        sys.exit(1)
     
     # Handle auto-tipper flag
     if auto_tipper:
