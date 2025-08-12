@@ -30,8 +30,8 @@ fi
 
 # Ensure the RPC URL is set
 if [ -z "$LAYER_RPC_URL" ]; then
-    echo "Setting LAYER_RPC_URL to default value"
-    export LAYER_RPC_URL="https://rpc.layer.exchange"
+    echo "No LAYER_RPC_URL configured!"
+    exit 1
 fi
 
 # First test if the block time tracker works

@@ -7,6 +7,7 @@ from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_claimed_deposit_ids
 from layerbot.utils.get_timestamp_from_height import get_timestamp_from_height
 from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts
+from layerbot.utils.discord_alerts import alert_new_bridge_deposits
 import pandas as pd
 
 def load_abi():
@@ -130,7 +131,7 @@ def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=Fa
             deposit_info[4],
             query_info['queryId'],
             '',  # Aggregate Timestamp will be updated by bridge_scan
-            'Yes' if claimed else 'No',
+            'yes' if claimed else 'no',
             query_info['queryData']
         ])
 
@@ -316,6 +317,7 @@ def main():
         print("\nFetching all deposits...")
         current_deposit_id = 1
         new_deposits = 0
+        new_deposits_for_discord = []  # Track new deposits for Discord alerts
         
         while True:
             try:
@@ -337,6 +339,12 @@ def main():
                     is_claimed = str(current_deposit_id) in claimed_ids
                     print(f"spud Claimed: {is_claimed}")
                     
+                    # Get timestamp for this deposit
+                    timestamp_str = ''
+                    if current_deposit_id in deposit_timestamps:
+                        timestamp_str = deposit_timestamps[current_deposit_id].strftime('%Y-%m-%d %H:%M:%S')
+                    else:
+                        timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     
                     # Print to terminal
                     print(f"\nNew Deposit ID: {current_deposit_id}")
@@ -346,6 +354,18 @@ def main():
                     print(f"Tip: {deposit_info[3]}")
                     print(f"Block Height: {deposit_info[4]}")
                     print(f"Query ID: {query_info['queryId']}")
+                    
+                    # Prepare deposit data for Discord alert
+                    deposit_data = {
+                        'deposit_id': current_deposit_id,
+                        'timestamp': timestamp_str,
+                        'sender': deposit_info[0],
+                        'recipient': deposit_info[1],
+                        'amount': str(deposit_info[2]),
+                        'tip': str(deposit_info[3]),
+                        'block_height': str(deposit_info[4])
+                    }
+                    new_deposits_for_discord.append(deposit_data)
                     
                     # Save to CSV
                     save_deposit_to_csv(current_deposit_id, deposit_info, deposit_timestamps, is_claimed)
@@ -359,6 +379,15 @@ def main():
                 break
         
         print(f"\nAdded {new_deposits} new deposits to {os.getenv('BRIDGE_DEPOSITS_CSV')}")
+        
+        # Send Discord alerts for new deposits
+        if new_deposits_for_discord:
+            print(f"\nSending Discord alerts for {len(new_deposits_for_discord)} new deposits...")
+            try:
+                alert_new_bridge_deposits(new_deposits_for_discord)
+                print("Discord alerts sent successfully!")
+            except Exception as e:
+                print(f"Error sending Discord alerts: {e}")
     
     except Exception as e:
         print(f"An unexpected error occurred: {e}")

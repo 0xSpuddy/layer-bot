@@ -319,7 +319,7 @@ def get_withdraw_tokens_txs():
         
         for line in result.stdout.split('\n'):
             line = line.strip()
-            print(f"\nProcessing line: '{line}'")
+            # print(f"\nProcessing line: '{line}'")
             
             # Start of new transaction
             if line.startswith('- code: 0'):

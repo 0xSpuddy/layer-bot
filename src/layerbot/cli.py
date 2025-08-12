@@ -29,7 +29,11 @@ import importlib
 @click.pass_context
 def cli(ctx, auto_tipper):
     """LayerBot - A tool for monitoring Layer bridge deposits"""
-    # Set RPC URL if not already set
+    # Load environment variables first
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    # Set RPC URL if not already set (use localhost for development)
     if not os.getenv("LAYER_RPC_URL"):
         click.echo(click.style("Error: LAYER_RPC_URL is not set", fg='red'))
         sys.exit(1)

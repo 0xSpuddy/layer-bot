@@ -9,8 +9,18 @@ import json
 import os
 import argparse
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
+
+# Get mount path from environment variable, default to empty string for root mount
+MOUNT_PATH = os.environ.get('MOUNT_PATH', '').rstrip('/')
+# Ensure mount path starts with / if it's not empty
+if MOUNT_PATH and not MOUNT_PATH.startswith('/'):
+    MOUNT_PATH = '/' + MOUNT_PATH
 
 def prepare_chart_data(deposits_df):
     """Prepare deposits data for the chart visualization."""
@@ -276,17 +286,28 @@ def show_deposits():
                           most_recent_scan=most_recent_scan,
                           block_time_stats=block_time_stats,
                           chart_data=chart_data,
-                          withdrawals_chart_data=withdrawals_chart_data)
+                          withdrawals_chart_data=withdrawals_chart_data,
+                          mount_path=MOUNT_PATH)
 
-# Routes for both root and /bridge- paths to work with reverse proxy
-@app.route('/bridge-palmito/')
+# Routes for both mount path and root to work with reverse proxy
+if MOUNT_PATH:
+    @app.route(f'{MOUNT_PATH}/')
+    def show_deposits_mounted():
+        return show_deposits()
+    
+    @app.route(f'{MOUNT_PATH}/estimate-block', methods=['POST'])
+    def estimate_block_mounted():
+        return estimate_block_handler()
+
 @app.route('/')
-def show_deposits_bridge():
+def show_deposits_root():
     return show_deposits()
 
-@app.route('/bridge-palmito/estimate-block', methods=['POST'])
 @app.route('/estimate-block', methods=['POST'])
-def estimate_block():
+def estimate_block_root():
+    return estimate_block_handler()
+
+def estimate_block_handler():
     try:
         # Get the block height from the request
         block_height = request.form.get('block_height')
@@ -348,10 +369,11 @@ def estimate_block():
             'traceback': traceback.format_exc()
         })
 
-# Add static file serving for /bridge- path
-@app.route('/bridge-palmito/static/<path:filename>')
-def bridge_static(filename):
-    return send_from_directory(app.static_folder, filename)
+# Add static file serving for mount path
+if MOUNT_PATH:
+    @app.route(f'{MOUNT_PATH}/static/<path:filename>')
+    def mounted_static(filename):
+        return send_from_directory(app.static_folder, filename)
 
 if __name__ == '__main__':
     # Parse command line arguments
