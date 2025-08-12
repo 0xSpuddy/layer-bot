@@ -78,3 +78,4 @@ The Discord alerts system is designed to be extensible. Additional alert types c
 - Bridge status changes
 - Error alerts
 - Performance monitoring
+
