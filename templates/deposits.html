@@ -6,7 +6,7 @@
     <title>Tellor Monitor Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/bridge-mainnet/static/example_style.css">
+    <link rel="stylesheet" href="{{ mount_path }}/static/example_style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Serialized chart data for JS to consume -->
@@ -809,7 +809,7 @@
                 }
                 
                 // Make the AJAX request
-                fetch('/bridge-mainnet/estimate-block', {
+                fetch('{{ mount_path }}/estimate-block', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
