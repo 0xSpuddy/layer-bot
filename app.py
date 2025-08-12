@@ -279,12 +279,12 @@ def show_deposits():
                           withdrawals_chart_data=withdrawals_chart_data)
 
 # Routes for both root and /bridge- paths to work with reverse proxy
-@app.route('/bridge-palmito/')
+@app.route('/bridge-mainnet/')
 @app.route('/')
 def show_deposits_bridge():
     return show_deposits()
 
-@app.route('/bridge-palmito/estimate-block', methods=['POST'])
+@app.route('/bridge-mainnet/estimate-block', methods=['POST'])
 @app.route('/estimate-block', methods=['POST'])
 def estimate_block():
     try:
@@ -349,7 +349,7 @@ def estimate_block():
         })
 
 # Add static file serving for /bridge- path
-@app.route('/bridge-palmito/static/<path:filename>')
+@app.route('/bridge-mainnet/static/<path:filename>')
 def bridge_static(filename):
     return send_from_directory(app.static_folder, filename)
 

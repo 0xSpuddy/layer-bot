@@ -25,9 +25,13 @@ from layerbot.commands.report_test_value import report_test_value
 @click.group()
 def cli():
     """LayerBot - A tool for monitoring Layer bridge deposits"""
-    # Set RPC URL if not already set
+    # Load environment variables first
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    # Set RPC URL if not already set (use localhost for development)
     if not os.getenv("LAYER_RPC_URL"):
-        os.environ["LAYER_RPC_URL"] = "https://rpc.layer.exchange"
+        os.environ["LAYER_RPC_URL"] = "http://localhost:26758/"
     pass
 
 @click.command('bridge-monitor')

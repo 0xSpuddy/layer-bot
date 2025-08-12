@@ -6,7 +6,7 @@
     <title>Tellor Monitor Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/bridge-palmito/static/example_style.css">
+    <link rel="stylesheet" href="/bridge-mainnet/static/example_style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Serialized chart data for JS to consume -->
@@ -315,6 +315,62 @@
              max-height: 100%;
          }
 
+         /* Block time stats list styling */
+         .block-time-stats {
+             background: rgba(25, 25, 35, 0.95);
+             backdrop-filter: blur(20px);
+             border: 2px solid #333344;
+             padding: 2rem;
+             border-radius: 4px;
+             margin-bottom: 2rem;
+         }
+
+         .stats-list {
+             display: flex;
+             flex-direction: column;
+             gap: 1rem;
+         }
+
+         .stats-item {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             padding: 0.75rem 1rem;
+             background: rgba(20, 20, 30, 0.8);
+             border: 1px solid #333344;
+             border-radius: 4px;
+             transition: all 0.3s ease;
+         }
+
+         .stats-item:hover {
+             background: rgba(0, 255, 136, 0.1);
+             border-color: #00ff88;
+             transform: translateY(-1px);
+             box-shadow: 0 2px 10px rgba(0, 255, 136, 0.2);
+         }
+
+         .stats-label {
+             color: #00d4ff;
+             font-size: 0.875rem;
+             font-weight: 500;
+             display: flex;
+             align-items: center;
+             gap: 0.5rem;
+         }
+
+         .stats-label i {
+             width: 16px;
+             text-align: center;
+         }
+
+         .stats-value {
+             color: #00ff88;
+             font-weight: 600;
+             font-family: 'Courier New', monospace;
+             font-size: 0.875rem;
+             text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+         }
+
          /* Responsive adjustments */
          @media (max-width: 768px) {
              .estimation-form {
@@ -350,6 +406,21 @@
              
              .deposits-chart h3 {
                  font-size: 1rem;
+            }
+
+            /* Mobile adjustments for block time stats */
+            .block-time-stats {
+                padding: 1rem;
+            }
+
+            .stats-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .stats-value {
+                align-self: flex-end;
             }
         }
     </style>
@@ -590,50 +661,30 @@
                 <!-- Block Time Tab Content -->
                 <div id="block-time-section" class="tab-content">
                     <!-- Block Time Stats -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-clock"></i>
+                    <div class="block-time-stats">
+                        <h3 style="color: #a855f7; margin-bottom: 1.5rem;">
+                            <i class="fas fa-clock"></i> Block Time Statistics
+                        </h3>
+                        <div class="stats-list">
+                            <div class="stats-item">
+                                <span class="stats-label"><i class="fas fa-clock"></i> 5 Minute Average:</span>
+                                <span class="stats-value">{{ block_time_stats.five_min }}</span>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-number">{{ block_time_stats.five_min }}</div>
-                                <div class="stat-title">5 Min Average</div>
+                            <div class="stats-item">
+                                <span class="stats-label"><i class="fas fa-hourglass-half"></i> 30 Minute Average:</span>
+                                <span class="stats-value">{{ block_time_stats.thirty_min }}</span>
                             </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-hourglass-half"></i>
+                            <div class="stats-item">
+                                <span class="stats-label"><i class="fas fa-history"></i> 60 Minute Average:</span>
+                                <span class="stats-value">{{ block_time_stats.sixty_min }}</span>
                             </div>
-                            <div class="stat-content">
-                                <div class="stat-number">{{ block_time_stats.thirty_min }}</div>
-                                <div class="stat-title">30 Min Average</div>
+                            <div class="stats-item">
+                                <span class="stats-label"><i class="fas fa-calendar-day"></i> 24 Hour Average:</span>
+                                <span class="stats-value">{{ block_time_stats.day }}</span>
                             </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-history"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-number">{{ block_time_stats.sixty_min }}</div>
-                                <div class="stat-title">60 Min Average</div>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-calendar-day"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-number">{{ block_time_stats.day }}</div>
-                                <div class="stat-title">24 Hour Average</div>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-calendar-week"></i>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-number">{{ block_time_stats.week }}</div>
-                                <div class="stat-title">7 Day Average</div>
+                            <div class="stats-item">
+                                <span class="stats-label"><i class="fas fa-calendar-week"></i> 7 Day Average:</span>
+                                <span class="stats-value">{{ block_time_stats.week }}</span>
                             </div>
                         </div>
                     </div>
@@ -758,7 +809,7 @@
                 }
                 
                 // Make the AJAX request
-                fetch('/bridge-palmito/estimate-block', {
+                fetch('/bridge-mainnet/estimate-block', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

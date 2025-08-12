@@ -130,7 +130,7 @@ def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=Fa
             deposit_info[4],
             query_info['queryId'],
             '',  # Aggregate Timestamp will be updated by bridge_scan
-            'Yes' if claimed else 'No',
+            'yes' if claimed else 'no',
             query_info['queryData']
         ])
 
