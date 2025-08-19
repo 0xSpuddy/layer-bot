@@ -165,7 +165,7 @@ def report_test_value(currency, report_all):
         percentage_diff = click.prompt(
             'Enter the percentage difference to apply (positive for increase, negative for decrease)',
             type=float,
-            default=15.0
+            default=69.0
         )
         
         click.echo(f"\nApplying {percentage_diff:+.1f}% difference to all prices:")
@@ -239,71 +239,101 @@ def report_test_value(currency, report_all):
             ]
 
             # Execute tip command
-            click.echo(f"Submitting tip for {symbol}...")
-            tip_result = subprocess.run(tip_cmd, capture_output=True, text=True, check=True)
-            
-            # Parse tip result
-            tip_success = False
-            tip_txhash = None
-            for line in tip_result.stdout.split('\n'):
-                if line.startswith('raw_log:'):
-                    tip_raw_log = line.split('raw_log: ')[1].strip('"')
-                    tip_success = (tip_raw_log == "")
-                elif line.startswith('txhash:'):
-                    tip_txhash = line.split('txhash: ')[1].strip()
-            
-            if tip_success:
-                click.echo(click.style(f"Tip successful for {symbol}! Hash: {tip_txhash}", fg='green'))
-            else:
-                click.echo(click.style(f"Tip failed for {symbol}!", fg='red'))
+            try:
+                tip_result = subprocess.run(tip_cmd, capture_output=True, text=True, check=True)
+                
+                # Parse tip result
+                tip_raw_log = ""
+                tip_txhash = None
+                for line in tip_result.stdout.split('\n'):
+                    if line.startswith('raw_log:'):
+                        tip_raw_log = line.split('raw_log: ')[1].strip('"')
+                    elif line.startswith('txhash:'):
+                        tip_txhash = line.split('txhash: ')[1].strip()
+                
+                # Check if tip transaction succeeded
+                if tip_raw_log == "":
+                    click.echo(click.style(f"Tip transaction succeeded! Hash: {tip_txhash}", fg='green'))
+                else:
+                    click.echo(click.style(f"Tip transaction failed for {symbol}!", fg='red'))
+                    click.echo(f"Raw log: {tip_raw_log}")
+                    failed_reports.append(f"{symbol} (tip failed)")
+                    continue
+                    
+            except subprocess.CalledProcessError as e:
+                click.echo(click.style(f"Tip transaction failed with error for {symbol}!", fg='red'))
+                click.echo(f"Return code: {e.returncode}")
+                click.echo(f"Error output: {e.stderr}")
                 failed_reports.append(f"{symbol} (tip failed)")
                 continue
             
             # Wait before submitting value
             click.echo("Waiting 3 seconds before submitting value...")
-            time.sleep(4)
+            time.sleep(3)
             
-            # Execute report command
-            click.echo(f"Submitting value for {symbol}...")
-            report_result = subprocess.run(report_cmd, capture_output=True, text=True, check=True)
-            
-            # Parse report result
+            # Retry report command until it succeeds (max 60 attempts = 1 minute)
+            max_retries = 60
+            retry_count = 0
             report_success = False
             report_txhash = None
-            for line in report_result.stdout.split('\n'):
-                if line.startswith('raw_log:'):
-                    report_raw_log = line.split('raw_log: ')[1].strip('"')
-                    report_success = (report_raw_log == "")
-                elif line.startswith('txhash:'):
-                    report_txhash = line.split('txhash: ')[1].strip()
             
-            if report_success:
-                click.echo(click.style(f"Report successful for {symbol}! Hash: {report_txhash}", fg='green'))
-                successful_reports.append(f"{symbol} (${price:,.2f})")
-            else:
-                click.echo(click.style(f"Report failed for {symbol}!", fg='red'))
-                click.echo(f"Raw log: {report_raw_log}")
-                failed_reports.append(f"{symbol} (report failed)")
+            while retry_count < max_retries and not report_success:
+                retry_count += 1
+                click.echo(f"Submitting value for {symbol} (attempt {retry_count}/{max_retries})...")
+                
+                try:
+                    report_result = subprocess.run(report_cmd, capture_output=True, text=True, check=True)
+                    
+                    # Parse report result
+                    report_raw_log = ""
+                    for line in report_result.stdout.split('\n'):
+                        if line.startswith('raw_log:'):
+                            report_raw_log = line.split('raw_log: ')[1].strip('"')
+                            report_success = (report_raw_log == "")
+                        elif line.startswith('txhash:'):
+                            report_txhash = line.split('txhash: ')[1].strip()
+                    
+                    if report_success:
+                        click.echo(click.style(f"Report successful for {symbol}! Hash: {report_txhash}", fg='green'))
+                        successful_reports.append(f"{symbol} (${price:,.2f})")
+                        break
+                    else:
+                        click.echo(click.style(f"Report attempt {retry_count} failed for {symbol} - retrying in 1 second...", fg='yellow'))
+                        if retry_count < max_retries:
+                            time.sleep(1)
+                        
+                except subprocess.CalledProcessError as e:
+                    click.echo(click.style(f"Report attempt {retry_count} failed with error for {symbol} - retrying in 1 second...", fg='yellow'))
+                    if retry_count < max_retries:
+                        time.sleep(1)
+            
+            # Check if we exhausted all retries
+            if not report_success:
+                click.echo(click.style(f"Report failed for {symbol} after {max_retries} attempts!", fg='red'))
+                failed_reports.append(f"{symbol} (report failed after {max_retries} attempts)")
             
             # Wait between currencies if processing multiple
             if len(valid_currencies) > 1:
-                click.echo("Waiting 2 seconds before next currency...")
+                click.echo("Waiting 2 seconds before processing next currency...")
                 time.sleep(2)
-        
-        # Summary
+
+        # Display final summary
         click.echo("\n" + "="*50)
-        click.echo("SUMMARY")
+        click.echo("REPORT SUMMARY")
         click.echo("="*50)
         
         if successful_reports:
-            click.echo(click.style(f"\nSuccessful reports ({len(successful_reports)}):", fg='green'))
+            click.echo(click.style(f"\n✅ Successful reports ({len(successful_reports)}):", fg='green'))
             for report in successful_reports:
-                click.echo(f"  ✓ {report}")
+                click.echo(f"  • {report}")
         
         if failed_reports:
-            click.echo(click.style(f"\nFailed reports ({len(failed_reports)}):", fg='red'))
+            click.echo(click.style(f"\n❌ Failed reports ({len(failed_reports)}):", fg='red'))
             for report in failed_reports:
-                click.echo(f"  ✗ {report}")
+                click.echo(f"  • {report}")
+        
+        if not successful_reports and not failed_reports:
+            click.echo(click.style("\n⚠️  No reports were processed", fg='yellow'))
 
     except subprocess.CalledProcessError as e:
         click.echo(click.style("\nError executing command:", fg='red'))
