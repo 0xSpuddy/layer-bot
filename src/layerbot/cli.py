@@ -21,6 +21,7 @@ from layerbot.commands import track_block_time
 from layerbot.commands.estimate_block_time import estimate
 from layerbot.commands.manage_block_data import cli as manage_block_data_cli
 from layerbot.commands.report_test_value import report_test_value
+from layerbot.commands.withdraw_tokens import request_withdrawal
 import importlib
 
 @click.group(invoke_without_command=True)
@@ -122,6 +123,7 @@ cli.add_command(track_block_time_cmd)
 cli.add_command(estimate_block_cmd)
 cli.add_command(manage_block_data_cli, name="block-data-manage")
 cli.add_command(report_test_value)
+cli.add_command(request_withdrawal)
 
 def create_cli():
     return cli()
