@@ -25,7 +25,7 @@ def request_withdrawal(creator, recipient, amount, fees, chain_id):
     """Request a token withdrawal from Layer chain to Ethereum.
     
     Example:
-        layerbot request-withdrawal tellor1vw2yy9nf3wz7hey89tpw5hn0yr3hkrzt889x47 7660794eF8f978Ea0922DC29B3b534d93e1fc94A 6900000loya
+        layerbot request-withdrawal [creator] [recipient] [amount] --fees [fees] --chain-id [chain-id]
     """
     # Debug prints for environment variables
     click.echo("\nDebug - Environment Variables:")
@@ -39,21 +39,21 @@ def request_withdrawal(creator, recipient, amount, fees, chain_id):
 
     # Get parameters if not provided as arguments
     if not creator:
-        default_creator = account_tellor_address or "tellor1vw2yy9nf3wz7hey89tpw5hn0yr3hkrzt889x47"
+        default_creator = None
         creator = click.prompt('Creator address', 
                               type=str,
                               default=default_creator,
                               show_default=True)
     
     if not recipient:
-        default_recipient = "7660794eF8f978Ea0922DC29B3b534d93e1fc94A"
+        default_recipient = None
         recipient = click.prompt('Recipient address (Ethereum)', 
                                 type=str,
                                 default=default_recipient,
                                 show_default=True)
     
     if not amount:
-        default_amount = "6900000loya"
+        default_amount = None
         amount = click.prompt('Amount to withdraw', 
                              type=str,
                              default=default_amount,
