@@ -268,12 +268,65 @@ def show_deposits():
                 withdrawals_df.loc[valid_timestamp_mask, 'Formatted_Timestamp'] = withdrawals_df.loc[valid_timestamp_mask, 'Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
                 # For rows with invalid timestamps, set to 'N/A'
                 withdrawals_df.loc[~valid_timestamp_mask, 'Formatted_Timestamp'] = 'N/A'
+                
+                # Calculate age of withdrawals
+                def format_time_ago(timestamp):
+                    if pd.isna(timestamp):
+                        return 'N/A'
+                    
+                    try:
+                        now = datetime.now()
+                        if timestamp.tz is None:
+                            timestamp = timestamp.tz_localize('UTC')
+                        now = now.replace(tzinfo=timestamp.tz)
+                        
+                        diff = now - timestamp
+                        total_seconds = int(diff.total_seconds())
+                        
+                        if total_seconds < 60:
+                            return f"{total_seconds}s ago"
+                        elif total_seconds < 3600:
+                            minutes = total_seconds // 60
+                            return f"{minutes}m ago"
+                        elif total_seconds < 86400:
+                            hours = total_seconds // 3600
+                            return f"{hours}h ago"
+                        else:
+                            days = total_seconds // 86400
+                            return f"{days}d ago"
+                    except Exception as e:
+                        print(f"Error calculating age for withdrawal timestamp {timestamp}: {e}")
+                        return 'N/A'
+                
+                withdrawals_df['Age'] = withdrawals_df['Timestamp'].apply(format_time_ago)
+                
+                # Calculate hours since withdrawal for status logic
+                def calculate_hours_since(timestamp):
+                    if pd.isna(timestamp):
+                        return None
+                    try:
+                        now = datetime.now()
+                        if timestamp.tz is None:
+                            timestamp = timestamp.tz_localize('UTC')
+                        now = now.replace(tzinfo=timestamp.tz)
+                        diff = now - timestamp
+                        return diff.total_seconds() / 3600
+                    except Exception as e:
+                        print(f"Error calculating hours since withdrawal {timestamp}: {e}")
+                        return None
+                
+                withdrawals_df['hours_since_withdrawal'] = withdrawals_df['Timestamp'].apply(calculate_hours_since)
+                
             except Exception as e:
                 print(f"Error processing withdrawal timestamps: {e}")
                 withdrawals_df['Formatted_Timestamp'] = 'N/A'
+                withdrawals_df['Age'] = 'N/A'
+                withdrawals_df['hours_since_withdrawal'] = None
         else:
             # If no Timestamp column exists, create a placeholder
             withdrawals_df['Formatted_Timestamp'] = 'N/A'
+            withdrawals_df['Age'] = 'N/A'
+            withdrawals_df['hours_since_withdrawal'] = None
         
         # Handle withdraw_id column
         if withdrawals_df['withdraw_id'].dtype == 'object':

@@ -586,8 +586,8 @@
                                     <th><i class="fas fa-hashtag"></i> Withdraw ID</th>
                                     <th><i class="fas fa-coins"></i> Amount (TRB)</th>
                                     <th><i class="fas fa-calendar-alt"></i> Withdrawal Date/Time</th>
-                                    <th><i class="fas fa-clock"></i> Age</th>
                                     <th><i class="fas fa-user"></i> Creator</th>
+                                    <th><i class="fas fa-clock"></i> Age</th>
                                     <th><i class="fas fa-tasks"></i> Status</th>
                                 </tr>
                             </thead>
@@ -612,6 +612,7 @@
                                             <span style="color: #666; font-style: italic;">N/A</span>
                                         {% endif %}
                                     </td>
+                                    <td class="reporter">{{ withdrawal['creator'] }}</td>
                                     <td class="time-ago">
                                         {% if withdrawal.get('Age') and withdrawal['Age'] != 'N/A' %}
                                             {{ withdrawal['Age'] }}
@@ -619,7 +620,6 @@
                                             <span style="color: #666; font-style: italic;">N/A</span>
                                         {% endif %}
                                     </td>
-                                    <td class="reporter">{{ withdrawal['creator'] }}</td>
                                     <td>
                                         {% if withdrawal['Claimed'] %}
                                             <span class="badge badge-success">Completed</span>
@@ -901,7 +901,8 @@
                                      pointRadius: 6,
                                      pointHoverRadius: 8,
                                      showLine: false,  // This removes the line connecting points
-                                     fill: false
+                                     fill: false,
+                                     yAxisID: 'y'  // Use left y-axis
                                  },
                                  {
                                      label: 'Cumulative Total (TRB)',
@@ -914,7 +915,8 @@
                                      pointRadius: 3,
                                      pointHoverRadius: 5,
                                      fill: false,
-                                     tension: 0.1
+                                     tension: 0.1,
+                                     yAxisID: 'y1'  // Use right y-axis
                                  }
                              ]
                          },
@@ -953,16 +955,39 @@
                                      }
                                  },
                                  y: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'left',
                                      grid: {
                                          color: '#333344'
                                      },
                                      ticks: {
-                                         color: '#00d4ff'
+                                         color: '#00ff88'
                                      },
                                      title: {
                                          display: true,
-                                         text: 'Amount (TRB)',
-                                         color: '#00d4ff',
+                                         text: 'Individual Deposits (TRB)',
+                                         color: '#00ff88',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 },
+                                 y1: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'right',
+                                     grid: {
+                                         drawOnChartArea: false
+                                     },
+                                     ticks: {
+                                         color: '#a855f7'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Cumulative Total (TRB)',
+                                         color: '#a855f7',
                                          font: {
                                              size: 12,
                                              weight: 'bold'
@@ -1076,7 +1101,8 @@
                                      pointRadius: 6,
                                      pointHoverRadius: 8,
                                      showLine: false,  // This removes the line connecting points
-                                     fill: false
+                                     fill: false,
+                                     yAxisID: 'y'  // Use left y-axis
                                  },
                                  {
                                      label: 'Cumulative Total (TRB)',
@@ -1089,7 +1115,8 @@
                                      pointRadius: 3,
                                      pointHoverRadius: 5,
                                      fill: false,
-                                     tension: 0.1
+                                     tension: 0.1,
+                                     yAxisID: 'y1'  // Use right y-axis
                                  }
                              ]
                          },
@@ -1128,16 +1155,39 @@
                                      }
                                  },
                                  y: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'left',
                                      grid: {
                                          color: '#333344'
                                      },
                                      ticks: {
-                                         color: '#00d4ff'
+                                         color: '#ff6b35'
                                      },
                                      title: {
                                          display: true,
-                                         text: 'Amount (TRB)',
-                                         color: '#00d4ff',
+                                         text: 'Individual Withdrawals (TRB)',
+                                         color: '#ff6b35',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 },
+                                 y1: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'right',
+                                     grid: {
+                                         drawOnChartArea: false
+                                     },
+                                     ticks: {
+                                         color: '#e74c3c'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Cumulative Total (TRB)',
+                                         color: '#e74c3c',
                                          font: {
                                              size: 12,
                                              weight: 'bold'
