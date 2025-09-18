@@ -52,7 +52,7 @@ def get_deposit_timestamps_from_ethereum(w3, contract):
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""
     csv_file = 'bridge_deposits.csv'    
-    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Aggregate Timestamp', 'Claimed', 'Query Data']
+    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Status', 'Query Data']
     
     try:
         # Check if file exists and has headers
@@ -130,8 +130,7 @@ def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=Fa
             deposit_info[3],
             deposit_info[4],
             query_info['queryId'],
-            '',  # Aggregate Timestamp will be updated by bridge_scan
-            'yes' if claimed else 'no',
+            'completed' if claimed else 'in progress',
             query_info['queryData']
         ])
 

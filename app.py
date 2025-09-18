@@ -128,8 +128,8 @@ def prepare_withdrawals_chart_data(withdrawals_df):
 
 @app.route('/')
 def show_deposits():
-    # Read the deposits CSV file with Aggregate Timestamp as string
-    deposits_df = pd.read_csv('bridge_deposits.csv', dtype={'Aggregate Timestamp': str})
+    # Read the deposits CSV file
+    deposits_df = pd.read_csv('bridge_deposits.csv')
     
     # Get the most recent scan time
     most_recent_scan = get_last_scan_time()
@@ -145,11 +145,44 @@ def show_deposits():
         # Remove rows with invalid timestamps
         deposits_df = deposits_df.dropna(subset=['Timestamp'])
         deposits_df['Formatted_Timestamp'] = deposits_df['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+        
+        # Calculate age of deposits
+        def format_time_ago(timestamp):
+            if pd.isna(timestamp):
+                return 'N/A'
+            
+            try:
+                now = datetime.now()
+                if timestamp.tz is None:
+                    timestamp = timestamp.tz_localize('UTC')
+                now = now.replace(tzinfo=timestamp.tz)
+                
+                diff = now - timestamp
+                total_seconds = int(diff.total_seconds())
+                
+                if total_seconds < 60:
+                    return f"{total_seconds}s ago"
+                elif total_seconds < 3600:
+                    minutes = total_seconds // 60
+                    return f"{minutes}m ago"
+                elif total_seconds < 86400:
+                    hours = total_seconds // 3600
+                    return f"{hours}h ago"
+                else:
+                    days = total_seconds // 86400
+                    return f"{days}d ago"
+            except Exception as e:
+                print(f"Error calculating age for timestamp {timestamp}: {e}")
+                return 'N/A'
+        
+        deposits_df['Age'] = deposits_df['Timestamp'].apply(format_time_ago)
+        
     except Exception as e:
         print(f"Error processing timestamps: {e}")
         # Fallback: create dummy timestamps if all fail
         deposits_df['Timestamp'] = pd.to_datetime('1970-01-01')
         deposits_df['Formatted_Timestamp'] = '1970-01-01 00:00:00 UTC'
+        deposits_df['Age'] = 'N/A'
     
     # Keep original data for chart (after timestamp processing, before filtering)
     chart_deposits_df = deposits_df.copy()
@@ -157,29 +190,6 @@ def show_deposits():
     # Filter out deposit IDs 27 and 32 for table display only
     deposits_df = deposits_df[~deposits_df['Deposit ID'].isin([27, 32])]
     
-    # Format Aggregate Timestamp for display with error handling
-    try:
-        numeric_aggregate_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
-        
-        def safe_format_timestamp(x):
-            try:
-                if pd.notna(x) and x > 0:
-                    # Handle both seconds and milliseconds timestamps
-                    if x > 1e10:  # If timestamp is in milliseconds
-                        x = x / 1000
-                    # Check if year is reasonable (between 1970 and 2100)
-                    dt = datetime.fromtimestamp(x)
-                    if 1970 <= dt.year <= 2100:
-                        return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
-                return 'N/A'
-            except (ValueError, OSError, OverflowError) as e:
-                print(f"Error formatting timestamp {x}: {e}")
-                return 'N/A'
-        
-        deposits_df['Formatted_Aggregate_Timestamp'] = numeric_aggregate_timestamps.apply(safe_format_timestamp)
-    except Exception as e:
-        print(f"Error processing aggregate timestamps: {e}")
-        deposits_df['Formatted_Aggregate_Timestamp'] = 'N/A'
     
     # Convert the large numbers to ETH format (divide by 10^18) for both datasets
     deposits_df['Amount'] = deposits_df['Amount'].apply(lambda x: float(x) / 1e18)
@@ -188,24 +198,47 @@ def show_deposits():
     # Calculate which rows need highlighting
     current_time = datetime.now().timestamp()
     twelve_hours = 12 * 60 * 60  # 12 hours in seconds
+    fourteen_hours = 14 * 60 * 60  # 14 hours in seconds
     
-    # Convert Aggregate Timestamp to numeric only for comparison, keeping original string value
-    numeric_timestamps = pd.to_numeric(deposits_df['Aggregate Timestamp'], errors='coerce')
+    # Convert deposit timestamp for comparison
+    deposit_timestamps = deposits_df['Timestamp'].apply(lambda x: x.timestamp() if pd.notna(x) else None)
     
-    # Ready to claim status (green)
+    # Calculate status based on time and claimed status
+    def calculate_status(row):
+        # Check if already claimed/completed (handle both old 'Claimed' and new 'Status' columns)
+        if pd.notna(row.get('Status')) and str(row['Status']).lower() == 'completed':
+            return 'completed'
+        elif pd.notna(row.get('Claimed')) and str(row['Claimed']).lower() == 'yes':
+            return 'completed'
+        
+        # Calculate time since deposit for unclaimed deposits
+        if pd.notna(row['Timestamp']):
+            deposit_time = row['Timestamp'].timestamp()
+            time_elapsed = current_time - deposit_time
+            
+            if time_elapsed < fourteen_hours:
+                return 'in progress'
+            else:
+                return 'past due'
+        else:
+            return 'past due'  # Default for invalid timestamps
+    
+    deposits_df['Status'] = deposits_df.apply(calculate_status, axis=1)
+    
+    # Ready to claim status (green) - based on deposit timestamp
     deposits_df['ready_to_claim'] = (
-        (deposits_df['Claimed'].fillna('no').str.lower() == 'no') & 
-        (numeric_timestamps.notna()) & 
-        ((current_time - numeric_timestamps) > twelve_hours)
+        (deposits_df['Status'].str.lower() != 'completed') & 
+        (deposit_timestamps.notna()) & 
+        ((current_time - deposit_timestamps) > twelve_hours)
     )
     
     # Recent scan status (pale green)
     if isinstance(most_recent_scan, str) and most_recent_scan != "No scan time available":
         most_recent_scan_time = pd.to_datetime(most_recent_scan).timestamp()
         deposits_df['recent_scan'] = (
-            (numeric_timestamps.notna()) & 
-            ((most_recent_scan_time - numeric_timestamps) <= twelve_hours) &
-            (deposits_df['Claimed'].fillna('no').str.lower() != 'yes')  # Exclude claimed deposits
+            (deposit_timestamps.notna()) & 
+            ((most_recent_scan_time - deposit_timestamps) <= twelve_hours) &
+            (deposits_df['Status'].str.lower() != 'completed')  # Exclude completed deposits
         )
     else:
         deposits_df['recent_scan'] = False
@@ -214,9 +247,9 @@ def show_deposits():
     deposits_df['invalid_recipient'] = ~deposits_df['Recipient'].fillna('').str.startswith('tellor1')
     
     # Sort the deposits dataframe
-    deposits_df['Claimed'] = deposits_df['Claimed'].fillna('no')
+    deposits_df['Status'] = deposits_df['Status'].fillna('past due')
     deposits_df = deposits_df.sort_values(
-        by=['Claimed', 'Deposit ID'],
+        by=['Status', 'Deposit ID'],
         ascending=[True, False]
     )
     

@@ -104,17 +104,25 @@ def get_claimed_deposit_ids():
             reader = csv.DictReader(f)
             fieldnames = reader.fieldnames
             for row in reader:
-                # Update Claimed column based on query results
-                row['Claimed'] = 'yes' if row['Deposit ID'] in claimed_ids else 'no'
+                # Update Status column based on query results (maintain backward compatibility)
+                if row['Deposit ID'] in claimed_ids:
+                    row['Status'] = 'completed'
+                    # Keep old Claimed column for backward compatibility if it exists
+                    if 'Claimed' in row:
+                        row['Claimed'] = 'yes'
+                else:
+                    # Keep existing status for unclaimed deposits (will be calculated in app.py)
+                    if 'Claimed' in row:
+                        row['Claimed'] = 'no'
                 rows.append(row)
         
-        # Write back to CSV with updated Claimed column
+        # Write back to CSV with updated Status column
         with open(base_csv, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
         
-        print(f"Updated Claimed column in {base_csv}")
+        print(f"Updated Status column in {base_csv}")
         return claimed_ids
         
     except Exception as e:
@@ -427,7 +435,7 @@ def main():
     # Get the timestamp
     timestamp = get_report_timestamp(result['queryId'])
     if timestamp:
-        print(f"Aggregate Timestamp: {timestamp}")
+        print(f"Report Timestamp: {timestamp}")
     else:
         print("No timestamp found")
         
@@ -455,17 +463,25 @@ def main():
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
         for row in reader:
-            # Update the Claimed column based on whether the deposit ID was successfully claimed
-            row['Claimed'] = 'yes' if row['Deposit ID'] in claimed_ids else 'no'
+            # Update the Status column based on whether the deposit ID was successfully claimed
+            if row['Deposit ID'] in claimed_ids:
+                row['Status'] = 'completed'
+                # Keep old Claimed column for backward compatibility if it exists
+                if 'Claimed' in row:
+                    row['Claimed'] = 'yes'
+            else:
+                # Keep existing status for unclaimed deposits
+                if 'Claimed' in row:
+                    row['Claimed'] = 'no'
             rows.append(row)
     
-    # Write back to CSV with updated Claimed column
+    # Write back to CSV with updated Status column
     with open(base_csv, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
     
-    print(f"Updated Claimed column in {base_csv}")
+    print(f"Updated Status column in {base_csv}")
 
     # Add new section for withdraw scan
     print("\nScanning for withdrawals...")

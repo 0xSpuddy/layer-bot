@@ -505,29 +505,31 @@
                                     <th><i class="fas fa-hashtag"></i> Deposit ID</th>
                                     <th><i class="fas fa-coins"></i> Amount (TRB)</th>
                                     <th><i class="fas fa-calendar-alt"></i> Deposit Date/Time</th>
-                                    <th><i class="fas fa-clock"></i> Aggregate Date/Time</th>
-                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                    <th><i class="fas fa-clock"></i> Age</th>
+                                    <th><i class="fas fa-tasks"></i> Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for deposit in deposits %}
-                                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Status']|lower == 'completed' %}claimed-row{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ deposit['Deposit ID'] }}</span>
                                     </td>
                                     <td class="value">{{ "%.4f"|format(deposit['Amount']) }}</td>
                                     <td class="time-ago">{{ deposit['Formatted_Timestamp'] }}</td>
-                                    <td class="time-ago">{{ deposit['Formatted_Aggregate_Timestamp'] }}</td>
+                                    <td class="time-ago">{{ deposit['Age'] }}</td>
                                     <td>
-                                        {% if deposit['Claimed']|lower == 'yes' %}
-                                            <span class="badge badge-success">{{ deposit['Claimed'] }}</span>
+                                        {% if deposit['Status']|lower == 'completed' %}
+                                            <span class="badge badge-success">{{ deposit['Status'] }}</span>
+                                        {% elif deposit['Status']|lower == 'in progress' %}
+                                            <span class="badge badge-warning">{{ deposit['Status'] }}</span>
                                         {% else %}
-                                            <span class="badge badge-secondary">{{ deposit['Claimed'] }}</span>
+                                            <span class="badge badge-danger">{{ deposit['Status'] }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
-                                <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                <tr class="details-row {% if deposit['Status']|lower == 'completed' %}claimed-row{% endif %}">
                                     <td colspan="5">
                                         <div class="address-details">
                                             <div class="address-container">
@@ -584,14 +586,14 @@
                                     <th><i class="fas fa-hashtag"></i> Withdraw ID</th>
                                     <th><i class="fas fa-coins"></i> Amount (TRB)</th>
                                     <th><i class="fas fa-calendar-alt"></i> Withdrawal Date/Time</th>
+                                    <th><i class="fas fa-clock"></i> Age</th>
                                     <th><i class="fas fa-user"></i> Creator</th>
-                                    <th><i class="fas fa-check-circle"></i> Success</th>
-                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                    <th><i class="fas fa-tasks"></i> Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for withdrawal in withdrawals %}
-                                <tr class="expandable-row {% if withdrawal['success'] %}ready-to-claim{% else %}invalid-recipient{% endif %} {% if withdrawal['Claimed'] %}claimed-row{% endif %}">
+                                <tr class="expandable-row {% if withdrawal['Claimed'] %}claimed-row{% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}ready-to-claim{% else %}invalid-recipient{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ withdrawal['withdraw_id'] }}</span>
@@ -610,19 +612,21 @@
                                             <span style="color: #666; font-style: italic;">N/A</span>
                                         {% endif %}
                                     </td>
-                                    <td class="reporter">{{ withdrawal['creator'] }}</td>
-                                    <td>
-                                        {% if withdrawal['success'] %}
-                                            <span class="badge badge-success">Yes</span>
+                                    <td class="time-ago">
+                                        {% if withdrawal.get('Age') and withdrawal['Age'] != 'N/A' %}
+                                            {{ withdrawal['Age'] }}
                                         {% else %}
-                                            <span class="badge badge-secondary">No</span>
+                                            <span style="color: #666; font-style: italic;">N/A</span>
                                         {% endif %}
                                     </td>
+                                    <td class="reporter">{{ withdrawal['creator'] }}</td>
                                     <td>
                                         {% if withdrawal['Claimed'] %}
-                                            <span class="badge badge-success">Yes</span>
+                                            <span class="badge badge-success">Completed</span>
+                                        {% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}
+                                            <span class="badge badge-warning">Ready for Claim</span>
                                         {% else %}
-                                            <span class="badge badge-secondary">No</span>
+                                            <span class="badge badge-info">In Progress</span>
                                         {% endif %}
                                     </td>
                                 </tr>
