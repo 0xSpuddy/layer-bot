@@ -56,49 +56,6 @@
             display: block;
         }
 
-        .status-legend {
-            background: rgba(25, 25, 35, 0.95);
-            backdrop-filter: blur(20px);
-            border: 2px solid #333344;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border-radius: 4px;
-        }
-
-        .legend-items {
-            display: flex;
-            gap: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .legend-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-        }
-
-        .legend-indicator.ready-to-claim {
-            background: linear-gradient(135deg, #00ff88, #00d4ff);
-        }
-
-        .legend-indicator.claimed {
-            background: rgba(0, 255, 136, 0.3);
-        }
-
-        .legend-indicator.invalid {
-            background: linear-gradient(135deg, #ff6b35, #ff4757);
-        }
-
-        .legend-text {
-            color: #00d4ff;
-            font-size: 0.875rem;
-        }
 
         /* Enhanced table rows */
         .data-table .expandable-row {
@@ -217,10 +174,6 @@
 
          /* Responsive adjustments */
          @media (max-width: 768px) {
-             .legend-items {
-            flex-direction: column;
-                 gap: 1rem;
-             }
              
              .address-item {
                  grid-template-columns: 1fr;
@@ -296,23 +249,6 @@
                         </div>
                     </div>
 
-                    <!-- Status Legend -->
-                    <div class="status-legend">
-                        <div class="legend-items">
-                            <div class="legend-item">
-                                <span class="legend-indicator ready-to-claim"></span>
-                                <span class="legend-text">Ready to Claim (Out of Time Lock)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-indicator claimed"></span>
-                                <span class="legend-text">Already Claimed</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-indicator invalid"></span>
-                                <span class="legend-text">Invalid Recipient</span>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Deposits Table -->
                     <div class="table-container">
