@@ -48,9 +48,9 @@ def get_unclaimed_deposits():
         return pd.DataFrame()
         
     df = pd.read_csv(csv_file)
-    # Filter for unclaimed deposits AND non-empty Aggregate Timestamp
+    # Filter for unclaimed deposits
     unclaimed = df[
-        (df['Claimed'].str.lower() == 'no')
+        (df['Status'].str.lower() != 'completed')
     ]
     return unclaimed.sort_values('Deposit ID')
 

@@ -180,65 +180,6 @@ def get_bridge_data_before(query_id):
         print(f"Error in get_bridge_data_before: {e}")
         return None
 
-def update_bridge_deposits_timestamps():
-    """Update Aggregate Timestamp in bridge_deposits.csv based on aggregate data."""
-    try:
-        load_dotenv()
-        csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
-        if not csv_file:
-            raise Exception("BRIDGE_DEPOSITS_CSV not found in .env file")
-        
-        print(f"\nUpdating timestamps in {csv_file}")
-        
-        # Read the CSV file with timestamps as strings to prevent float conversion
-        df = pd.read_csv(csv_file, dtype={'Aggregate Timestamp': str})
-        print(f"Found {len(df)} total rows in bridge deposits file")
-        
-        updates = 0
-        # Process each unclaimed row
-        for index, row in df.iterrows():
-            if str(row['Claimed']).lower() != 'yes':
-                query_id = row['Query ID']
-                print(f"\nProcessing row {index}:")
-                print(f"Current Aggregate Timestamp: {row.get('Aggregate Timestamp', 'None')}")
-                print(f"Query ID: {query_id}")
-                
-                best_timestamp = get_bridge_data_before(query_id)
-                print(f"Best timestamp: {best_timestamp}")
-                
-                if best_timestamp:
-                    print(f"Updating row {index} with timestamp {best_timestamp}")
-                    # Store timestamp as string to prevent float conversion
-                    df.loc[index, 'Aggregate Timestamp'] = str(best_timestamp)
-                    updates += 1
-                    
-                    # Verify the update
-                    print(f"After update - Aggregate Timestamp: {df.loc[index, 'Aggregate Timestamp']}")
-        
-        # Save updated CSV without allowing float conversion
-        print(f"\nSaving updates to {csv_file}")
-        print(f"Total updates to make: {updates}")
-        
-        # Display a few rows before saving
-        print("\nFirst few rows to be saved:")
-        print(df[['Query ID', 'Aggregate Timestamp']].head())
-        
-        # Save with timestamps as strings
-        df.to_csv(csv_file, index=False)
-        print(f"Updated {updates} timestamps in bridge deposits file")
-        
-        # Verify the save
-        verification_df = pd.read_csv(csv_file, dtype={'Aggregate Timestamp': str})
-        print("\nVerification - First few rows after save:")
-        print(verification_df[['Query ID', 'Aggregate Timestamp']].head())
-        
-        return True
-        
-    except Exception as e:
-        print(f"Error updating bridge deposits timestamps: {e}")
-        import traceback
-        print(traceback.format_exc())
-        return False
 
 def main():
     """Main function to run the script directly."""

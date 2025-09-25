@@ -56,49 +56,6 @@
             display: block;
         }
 
-        .status-legend {
-            background: rgba(25, 25, 35, 0.95);
-            backdrop-filter: blur(20px);
-            border: 2px solid #333344;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border-radius: 4px;
-        }
-
-        .legend-items {
-            display: flex;
-            gap: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .legend-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-        }
-
-        .legend-indicator.ready-to-claim {
-            background: linear-gradient(135deg, #00ff88, #00d4ff);
-        }
-
-        .legend-indicator.claimed {
-            background: rgba(0, 255, 136, 0.3);
-        }
-
-        .legend-indicator.invalid {
-            background: linear-gradient(135deg, #ff6b35, #ff4757);
-        }
-
-        .legend-text {
-            color: #00d4ff;
-            font-size: 0.875rem;
-        }
 
         /* Enhanced table rows */
         .data-table .expandable-row {
@@ -174,107 +131,6 @@
             word-break: break-all;
         }
 
-        /* Block estimation form */
-        .estimation-container {
-            background: rgba(25, 25, 35, 0.95);
-            backdrop-filter: blur(20px);
-            border: 2px solid #333344;
-            padding: 2rem;
-            border-radius: 4px;
-            margin-top: 2rem;
-        }
-
-        .estimation-form {
-            display: grid;
-            grid-template-columns: 1fr auto auto auto;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .form-group label {
-            color: #00d4ff;
-            font-size: 0.875rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input,
-        .form-group select {
-            padding: 0.75rem;
-            border: 2px solid #333344;
-            background: #1a1a2e;
-            color: #00ff88;
-            font-size: 0.875rem;
-            font-family: inherit;
-            border-radius: 4px;
-            transition: border-color 0.2s;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #00ff88;
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
-        }
-
-        .estimation-result {
-            min-height: 3rem;
-        }
-
-        .result-success {
-            background: rgba(0, 255, 136, 0.1);
-            border: 2px solid rgba(0, 255, 136, 0.3);
-            border-radius: 4px;
-            padding: 1.5rem;
-        }
-
-        .result-error {
-            background: rgba(255, 107, 53, 0.1);
-            border: 2px solid rgba(255, 107, 53, 0.3);
-            border-radius: 4px;
-            padding: 1.5rem;
-        }
-
-        .result-header {
-            color: #a855f7;
-            font-weight: 600;
-            font-size: 1.125rem;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .result-grid {
-            display: grid;
-            gap: 0.75rem;
-        }
-
-        .result-item {
-            display: grid;
-            grid-template-columns: 200px 1fr;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .result-label {
-            color: #00d4ff;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .result-value {
-            color: #00ff88;
-            font-weight: 600;
-            font-family: 'Courier New', monospace;
-        }
 
                  /* Timestamp styling */
          .data-table .time-ago {
@@ -315,79 +171,11 @@
              max-height: 100%;
          }
 
-         /* Block time stats list styling */
-         .block-time-stats {
-             background: rgba(25, 25, 35, 0.95);
-             backdrop-filter: blur(20px);
-             border: 2px solid #333344;
-             padding: 2rem;
-             border-radius: 4px;
-             margin-bottom: 2rem;
-         }
-
-         .stats-list {
-             display: flex;
-             flex-direction: column;
-             gap: 1rem;
-         }
-
-         .stats-item {
-             display: flex;
-             justify-content: space-between;
-             align-items: center;
-             padding: 0.75rem 1rem;
-             background: rgba(20, 20, 30, 0.8);
-             border: 1px solid #333344;
-             border-radius: 4px;
-             transition: all 0.3s ease;
-         }
-
-         .stats-item:hover {
-             background: rgba(0, 255, 136, 0.1);
-             border-color: #00ff88;
-             transform: translateY(-1px);
-             box-shadow: 0 2px 10px rgba(0, 255, 136, 0.2);
-         }
-
-         .stats-label {
-             color: #00d4ff;
-             font-size: 0.875rem;
-             font-weight: 500;
-             display: flex;
-             align-items: center;
-             gap: 0.5rem;
-         }
-
-         .stats-label i {
-             width: 16px;
-             text-align: center;
-         }
-
-         .stats-value {
-             color: #00ff88;
-             font-weight: 600;
-             font-family: 'Courier New', monospace;
-             font-size: 0.875rem;
-             text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
-         }
 
          /* Responsive adjustments */
          @media (max-width: 768px) {
-             .estimation-form {
-                 grid-template-columns: 1fr;
-             }
-             
-             .legend-items {
-            flex-direction: column;
-                 gap: 1rem;
-             }
              
              .address-item {
-                 grid-template-columns: 1fr;
-                 gap: 0.5rem;
-             }
-             
-             .result-item {
                  grid-template-columns: 1fr;
                  gap: 0.5rem;
              }
@@ -406,21 +194,6 @@
              
              .deposits-chart h3 {
                  font-size: 1rem;
-            }
-
-            /* Mobile adjustments for block time stats */
-            .block-time-stats {
-                padding: 1rem;
-            }
-
-            .stats-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
-            }
-
-            .stats-value {
-                align-self: flex-end;
             }
         }
     </style>
@@ -454,9 +227,6 @@
                     <button class="tab-btn" data-target="withdrawals-section">
                         <i class="fas fa-arrow-up"></i> Bridge Withdrawals
                     </button>
-                    <button class="tab-btn" data-target="block-time-section">
-                        <i class="fas fa-clock"></i> Block Time Analytics
-                    </button>
                 </div>
 
                 <!-- Deposits Tab Content -->
@@ -479,23 +249,6 @@
                         </div>
                     </div>
 
-                    <!-- Status Legend -->
-                    <div class="status-legend">
-                        <div class="legend-items">
-                            <div class="legend-item">
-                                <span class="legend-indicator ready-to-claim"></span>
-                                <span class="legend-text">Ready to Claim (Out of Time Lock)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-indicator claimed"></span>
-                                <span class="legend-text">Already Claimed</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-indicator invalid"></span>
-                                <span class="legend-text">Invalid Recipient</span>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Deposits Table -->
                     <div class="table-container">
@@ -505,29 +258,31 @@
                                     <th><i class="fas fa-hashtag"></i> Deposit ID</th>
                                     <th><i class="fas fa-coins"></i> Amount (TRB)</th>
                                     <th><i class="fas fa-calendar-alt"></i> Deposit Date/Time</th>
-                                    <th><i class="fas fa-clock"></i> Aggregate Date/Time</th>
-                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                    <th><i class="fas fa-clock"></i> Age</th>
+                                    <th><i class="fas fa-tasks"></i> Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for deposit in deposits %}
-                                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                <tr class="expandable-row {% if deposit['ready_to_claim'] %}ready-to-claim{% elif deposit['invalid_recipient'] %}invalid-recipient{% elif deposit['recent_scan'] %}recent-scan{% endif %} {% if deposit['Status']|lower == 'completed' %}claimed-row{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ deposit['Deposit ID'] }}</span>
                                     </td>
                                     <td class="value">{{ "%.4f"|format(deposit['Amount']) }}</td>
                                     <td class="time-ago">{{ deposit['Formatted_Timestamp'] }}</td>
-                                    <td class="time-ago">{{ deposit['Formatted_Aggregate_Timestamp'] }}</td>
+                                    <td class="time-ago">{{ deposit['Age'] }}</td>
                                     <td>
-                                        {% if deposit['Claimed']|lower == 'yes' %}
-                                            <span class="badge badge-success">{{ deposit['Claimed'] }}</span>
+                                        {% if deposit['Status']|lower == 'completed' %}
+                                            <span class="badge badge-success">{{ deposit['Status'] }}</span>
+                                        {% elif deposit['Status']|lower == 'in progress' %}
+                                            <span class="badge badge-warning">{{ deposit['Status'] }}</span>
                                         {% else %}
-                                            <span class="badge badge-secondary">{{ deposit['Claimed'] }}</span>
+                                            <span class="badge badge-danger">{{ deposit['Status'] }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
-                                <tr class="details-row {% if deposit['Claimed']|lower == 'yes' %}claimed-row{% endif %}">
+                                <tr class="details-row {% if deposit['Status']|lower == 'completed' %}claimed-row{% endif %}">
                                     <td colspan="5">
                                         <div class="address-details">
                                             <div class="address-container">
@@ -585,13 +340,13 @@
                                     <th><i class="fas fa-coins"></i> Amount (TRB)</th>
                                     <th><i class="fas fa-calendar-alt"></i> Withdrawal Date/Time</th>
                                     <th><i class="fas fa-user"></i> Creator</th>
-                                    <th><i class="fas fa-check-circle"></i> Success</th>
-                                    <th><i class="fas fa-check-circle"></i> Claimed</th>
+                                    <th><i class="fas fa-clock"></i> Age</th>
+                                    <th><i class="fas fa-tasks"></i> Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for withdrawal in withdrawals %}
-                                <tr class="expandable-row {% if withdrawal['success'] %}ready-to-claim{% else %}invalid-recipient{% endif %} {% if withdrawal['Claimed'] %}claimed-row{% endif %}">
+                                <tr class="expandable-row {% if withdrawal['Claimed'] %}claimed-row{% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}ready-to-claim{% else %}invalid-recipient{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ withdrawal['withdraw_id'] }}</span>
@@ -611,18 +366,20 @@
                                         {% endif %}
                                     </td>
                                     <td class="reporter">{{ withdrawal['creator'] }}</td>
-                                    <td>
-                                        {% if withdrawal['success'] %}
-                                            <span class="badge badge-success">Yes</span>
+                                    <td class="time-ago">
+                                        {% if withdrawal.get('Age') and withdrawal['Age'] != 'N/A' %}
+                                            {{ withdrawal['Age'] }}
                                         {% else %}
-                                            <span class="badge badge-secondary">No</span>
+                                            <span style="color: #666; font-style: italic;">N/A</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if withdrawal['Claimed'] %}
-                                            <span class="badge badge-success">Yes</span>
+                                            <span class="badge badge-success">Completed</span>
+                                        {% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}
+                                            <span class="badge badge-warning">Ready for Claim</span>
                                         {% else %}
-                                            <span class="badge badge-secondary">No</span>
+                                            <span class="badge badge-info">In Progress</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -658,74 +415,6 @@
                     </div>
                 </div>
 
-                <!-- Block Time Tab Content -->
-                <div id="block-time-section" class="tab-content">
-                    <!-- Block Time Stats -->
-                    <div class="block-time-stats">
-                        <h3 style="color: #a855f7; margin-bottom: 1.5rem;">
-                            <i class="fas fa-clock"></i> Block Time Statistics
-                        </h3>
-                        <div class="stats-list">
-                            <div class="stats-item">
-                                <span class="stats-label"><i class="fas fa-clock"></i> 5 Minute Average:</span>
-                                <span class="stats-value">{{ block_time_stats.five_min }}</span>
-                            </div>
-                            <div class="stats-item">
-                                <span class="stats-label"><i class="fas fa-hourglass-half"></i> 30 Minute Average:</span>
-                                <span class="stats-value">{{ block_time_stats.thirty_min }}</span>
-                            </div>
-                            <div class="stats-item">
-                                <span class="stats-label"><i class="fas fa-history"></i> 60 Minute Average:</span>
-                                <span class="stats-value">{{ block_time_stats.sixty_min }}</span>
-                            </div>
-                            <div class="stats-item">
-                                <span class="stats-label"><i class="fas fa-calendar-day"></i> 24 Hour Average:</span>
-                                <span class="stats-value">{{ block_time_stats.day }}</span>
-                            </div>
-                            <div class="stats-item">
-                                <span class="stats-label"><i class="fas fa-calendar-week"></i> 7 Day Average:</span>
-                                <span class="stats-value">{{ block_time_stats.week }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Block Estimation Tool -->
-                    <div class="estimation-container">
-                        <h3 style="color: #a855f7; margin-bottom: 1.5rem;">
-                            <i class="fas fa-calculator"></i> Block Time Estimation Tool
-                        </h3>
-                        
-                        <div class="estimation-form">
-                            <div class="form-group">
-                                <label for="blockHeightInput">Target Block Height</label>
-                                <input type="number" id="blockHeightInput" placeholder="Enter future block height" min="1">
-                            </div>
-                            <div class="form-group">
-                                <label for="timezoneSelect">Timezone</label>
-                                <select id="timezoneSelect">
-                                    <option value="">Browser's local time</option>
-                                    <option value="UTC">UTC</option>
-                                    <option value="America/New_York">US Eastern</option>
-                                    <option value="America/Chicago">US Central</option>
-                                    <option value="America/Denver">US Mountain</option>
-                                    <option value="America/Los_Angeles">US Pacific</option>
-                                    <option value="Europe/London">UK/Ireland</option>
-                                    <option value="Europe/Paris">Central Europe</option>
-                                    <option value="Asia/Tokyo">Japan</option>
-                                    <option value="Asia/Shanghai">China</option>
-                                    <option value="Australia/Sydney">Australia (East)</option>
-                                </select>
-                            </div>
-                            <button id="calculateBlockTime" class="btn btn-primary">
-                                <i class="fas fa-play"></i> Calculate
-                            </button>
-                        </div>
-
-                        <div id="blockEstimationResult" class="estimation-result">
-                            <!-- Results will be displayed here -->
-                        </div>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
@@ -780,83 +469,8 @@
                 row.style.display = 'none';
             });
 
-            // Clear block height input on page load
-            document.getElementById('blockHeightInput').value = '';
-
             // Initialize deposits chart
             initializeDepositsChart();
-
-            // Block time estimation functionality
-            document.getElementById('calculateBlockTime').addEventListener('click', function() {
-                const blockHeightInput = document.getElementById('blockHeightInput');
-                const blockHeight = blockHeightInput.value.trim();
-                const timezoneSelect = document.getElementById('timezoneSelect');
-                const timezone = timezoneSelect.value;
-                const resultDiv = document.getElementById('blockEstimationResult');
-                
-                if (!blockHeight || isNaN(parseInt(blockHeight))) {
-                    resultDiv.innerHTML = '<div class="result-error"><div class="result-header">Error</div><p style="color: #ff6b35;">Please enter a valid block height</p></div>';
-                    return;
-                }
-                
-                // Show loading state
-                resultDiv.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">Calculating estimation...</div></div>';
-                
-                // Build request data
-                let formData = 'block_height=' + encodeURIComponent(blockHeight);
-                if (timezone) {
-                    formData += '&timezone=' + encodeURIComponent(timezone);
-                }
-                
-                // Make the AJAX request
-                fetch('{{ mount_path }}/estimate-block', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        let resultHTML = '<div class="result-success">';
-                        resultHTML += '<div class="result-header"><i class="fas fa-check-circle"></i> Block Time Estimation Results</div>';
-                        resultHTML += '<div class="result-grid">';
-                        
-                        if (data.result['Current block height']) {
-                            resultHTML += `<div class="result-item">
-                                <span class="result-label">Current block height:</span>
-                                <span class="result-value">${data.result['Current block height']}</span>
-                            </div>`;
-                        }
-                        
-                        resultHTML += `<div class="result-item">
-                            <span class="result-label">Target block height:</span>
-                            <span class="result-value">${data.user_input}</span>
-                        </div>`;
-                        
-                        // Clear input after successful calculation
-                        blockHeightInput.value = '';
-                        
-                        Object.keys(data.result).forEach(key => {
-                            if (key !== 'Current block height') {
-                                resultHTML += `<div class="result-item">
-                                    <span class="result-label">${key}:</span>
-                                    <span class="result-value">${data.result[key]}</span>
-                                    </div>`;
-                            }
-                        });
-
-                        resultHTML += '</div></div>';
-                        resultDiv.innerHTML = resultHTML;
-                    } else {
-                        resultDiv.innerHTML = `<div class="result-error"><div class="result-header"><i class="fas fa-exclamation-triangle"></i> Error</div><p style="color: #ff6b35;">${data.error || 'Unknown error occurred'}</p></div>`;
-                    }
-                })
-                .catch(error => {
-                    resultDiv.innerHTML = `<div class="result-error"><div class="result-header"><i class="fas fa-exclamation-triangle"></i> Error</div><p style="color: #ff6b35;">${error.message}</p></div>`;
-            });
-        });
 
              // Initialize deposits chart
              function initializeDepositsChart() {
@@ -897,7 +511,8 @@
                                      pointRadius: 6,
                                      pointHoverRadius: 8,
                                      showLine: false,  // This removes the line connecting points
-                                     fill: false
+                                     fill: false,
+                                     yAxisID: 'y'  // Use left y-axis
                                  },
                                  {
                                      label: 'Cumulative Total (TRB)',
@@ -910,7 +525,8 @@
                                      pointRadius: 3,
                                      pointHoverRadius: 5,
                                      fill: false,
-                                     tension: 0.1
+                                     tension: 0.1,
+                                     yAxisID: 'y1'  // Use right y-axis
                                  }
                              ]
                          },
@@ -949,16 +565,39 @@
                                      }
                                  },
                                  y: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'left',
                                      grid: {
                                          color: '#333344'
                                      },
                                      ticks: {
-                                         color: '#00d4ff'
+                                         color: '#00ff88'
                                      },
                                      title: {
                                          display: true,
-                                         text: 'Amount (TRB)',
-                                         color: '#00d4ff',
+                                         text: 'Individual Deposits (TRB)',
+                                         color: '#00ff88',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 },
+                                 y1: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'right',
+                                     grid: {
+                                         drawOnChartArea: false
+                                     },
+                                     ticks: {
+                                         color: '#a855f7'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Cumulative Total (TRB)',
+                                         color: '#a855f7',
                                          font: {
                                              size: 12,
                                              weight: 'bold'
@@ -1072,7 +711,8 @@
                                      pointRadius: 6,
                                      pointHoverRadius: 8,
                                      showLine: false,  // This removes the line connecting points
-                                     fill: false
+                                     fill: false,
+                                     yAxisID: 'y'  // Use left y-axis
                                  },
                                  {
                                      label: 'Cumulative Total (TRB)',
@@ -1085,7 +725,8 @@
                                      pointRadius: 3,
                                      pointHoverRadius: 5,
                                      fill: false,
-                                     tension: 0.1
+                                     tension: 0.1,
+                                     yAxisID: 'y1'  // Use right y-axis
                                  }
                              ]
                          },
@@ -1124,16 +765,39 @@
                                      }
                                  },
                                  y: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'left',
                                      grid: {
                                          color: '#333344'
                                      },
                                      ticks: {
-                                         color: '#00d4ff'
+                                         color: '#ff6b35'
                                      },
                                      title: {
                                          display: true,
-                                         text: 'Amount (TRB)',
-                                         color: '#00d4ff',
+                                         text: 'Individual Withdrawals (TRB)',
+                                         color: '#ff6b35',
+                                         font: {
+                                             size: 12,
+                                             weight: 'bold'
+                                         }
+                                     }
+                                 },
+                                 y1: {
+                                     type: 'linear',
+                                     display: true,
+                                     position: 'right',
+                                     grid: {
+                                         drawOnChartArea: false
+                                     },
+                                     ticks: {
+                                         color: '#e74c3c'
+                                     },
+                                     title: {
+                                         display: true,
+                                         text: 'Cumulative Total (TRB)',
+                                         color: '#e74c3c',
                                          font: {
                                              size: 12,
                                              weight: 'bold'

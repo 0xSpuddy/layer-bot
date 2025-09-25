@@ -1,6 +1,5 @@
 import click
 from layerbot.utils.query_layer import get_claimed_deposit_ids, get_withdraw_tokens_txs
-from layerbot.utils.query_bridge_reports import update_bridge_deposits_timestamps
 from layerbot.bridge_info import update_withdrawal_status
 from layerbot.utils.scan_time import update_scan_time
 from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts, update_withdrawal_timestamps
