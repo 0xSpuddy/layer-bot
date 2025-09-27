@@ -242,11 +242,11 @@ def show_deposits():
     # Invalid recipient status (red)
     deposits_df['invalid_recipient'] = ~deposits_df['Recipient'].fillna('').str.startswith('tellor1')
     
-    # Sort the deposits dataframe
+    # Sort the deposits dataframe - highest deposit ID first
     deposits_df['Status'] = deposits_df['Status'].fillna('past due')
     deposits_df = deposits_df.sort_values(
-        by=['Status', 'Deposit ID'],
-        ascending=[True, False]
+        by=['Deposit ID'],
+        ascending=[False]
     )
     
     # Read the withdrawals CSV file
