@@ -17,8 +17,6 @@ from layerbot.commands.add_public_addrs import add_requester
 from layerbot.commands.send_to_requesters import send_to_requesters
 from .commands.bridge_scan import bridge_scan, deposits, withdrawals
 from layerbot.commands.propose_dispute import propose_dispute
-from layerbot.commands import track_block_time
-from layerbot.commands.estimate_block_time import estimate
 from layerbot.commands.manage_block_data import cli as manage_block_data_cli
 from layerbot.commands.report_test_value import report_test_value
 import importlib
@@ -79,35 +77,6 @@ def bridge_monitor():
     except Exception as e:
         click.echo(f"\nError in bridge monitor: {e}")
 
-@click.command(name="track-block-time")
-@click.option("--daemon", is_flag=True, default=False, help="Run as a daemon, recording block time at regular intervals")
-@click.option("--test", is_flag=True, default=False, help="Test block time tracking without starting the tracker")
-def track_block_time_cmd(daemon, test):
-    """Track block time and record averages to a CSV file"""
-    if test:
-        click.echo("Testing block time tracking...")
-        return track_block_time.track(test=True)
-    elif daemon:
-        click.echo("Starting block time tracker daemon...")
-        return track_block_time.track(daemon=True)
-    else:
-        click.echo("Starting block time tracker...")
-        return track_block_time.track()
-
-@click.command(name="estimate-block")
-@click.argument("height", type=int, required=True)
-@click.option("--timezone", type=str, help="Timezone for estimated time (e.g. 'America/New_York', 'Europe/London')")
-def estimate_block_cmd(height, timezone):
-    """
-    Estimate when a future block height will be reached.
-    
-    Examples:
-    \b
-    layerbot estimate-block 1000000
-    layerbot estimate-block 1000000 --timezone "America/New_York" 
-    """
-    success = estimate(height, timezone)
-    return 0 if success else 1
 
 cli.add_command(test)
 cli.add_command(bridge_request)
@@ -118,8 +87,6 @@ cli.add_command(send_to_requesters)
 cli.add_command(bridge_scan)
 cli.add_command(propose_dispute)
 cli.add_command(bridge_monitor)
-cli.add_command(track_block_time_cmd)
-cli.add_command(estimate_block_cmd)
 cli.add_command(manage_block_data_cli, name="block-data-manage")
 cli.add_command(report_test_value)
 
