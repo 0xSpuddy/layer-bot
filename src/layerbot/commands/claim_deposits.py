@@ -13,7 +13,7 @@ account_name = os.getenv('ACCOUNT_NAME')
 account_tellor_address = os.getenv('ACCOUNT_TELLOR_ADDRESS')
 csv_path = os.getenv('BRIDGE_DEPOSITS_CSV', 'bridge_deposits.csv')
 ethereum_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-bridge_contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+BRIDGE_CONTRACT_ADDRESS_0 = os.getenv('BRIDGE_CONTRACT_ADDRESS_0')
 
 # Clean the URL
 layer_rpc_url = ''.join(c for c in layer_rpc_url if ord(c) >= 32)  # Remove control characters

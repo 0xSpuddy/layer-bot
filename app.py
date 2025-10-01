@@ -221,6 +221,42 @@ def show_deposits():
     
     deposits_df['Status'] = deposits_df.apply(calculate_status, axis=1)
     
+    # Calculate processing time for completed deposits
+    def calculate_processing_time(row):
+        """Calculate time from deposit to claim in hours"""
+        if pd.isna(row.get('Claimed Timestamp')) or row.get('Claimed Timestamp', '').strip() == '':
+            return None
+        
+        try:
+            deposit_time = pd.to_datetime(row['Timestamp'])
+            claimed_time = pd.to_datetime(row['Claimed Timestamp'])
+            
+            if pd.isna(deposit_time) or pd.isna(claimed_time):
+                return None
+            
+            time_diff = claimed_time - deposit_time
+            hours = time_diff.total_seconds() / 3600
+            return round(hours, 2)
+        except Exception as e:
+            print(f"Error calculating processing time for deposit {row.get('Deposit ID')}: {e}")
+            return None
+    
+    deposits_df['Processing Time (hours)'] = deposits_df.apply(calculate_processing_time, axis=1)
+    
+    # Calculate processing time statistics for completed deposits
+    completed_with_times = deposits_df[
+        (deposits_df['Status'].str.lower() == 'completed') & 
+        (deposits_df['Processing Time (hours)'].notna())
+    ]
+    
+    processing_stats = {
+        'count': len(completed_with_times),
+        'avg': round(completed_with_times['Processing Time (hours)'].mean(), 2) if len(completed_with_times) > 0 else None,
+        'min': round(completed_with_times['Processing Time (hours)'].min(), 2) if len(completed_with_times) > 0 else None,
+        'max': round(completed_with_times['Processing Time (hours)'].max(), 2) if len(completed_with_times) > 0 else None,
+        'median': round(completed_with_times['Processing Time (hours)'].median(), 2) if len(completed_with_times) > 0 else None
+    }
+    
     # Ready to claim status (green) - based on deposit timestamp
     deposits_df['ready_to_claim'] = (
         (deposits_df['Status'].str.lower() != 'completed') & 
@@ -368,6 +404,7 @@ def show_deposits():
                           most_recent_scan=most_recent_scan,
                           chart_data=chart_data,
                           withdrawals_chart_data=withdrawals_chart_data,
+                          processing_stats=processing_stats,
                           mount_path=MOUNT_PATH)
 
 # Routes for both mount path and root to work with reverse proxy

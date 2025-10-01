@@ -13,7 +13,8 @@ account_name = os.getenv('ACCOUNT_NAME')
 account_tellor_address = os.getenv('ACCOUNT_TELLOR_ADDRESS')
 csv_path = os.getenv('BRIDGE_DEPOSITS_CSV', 'bridge_deposits.csv')
 ethereum_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-bridge_contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+# Use CURRENT address, fall back to _1 for backwards compatibility
+BRIDGE_CONTRACT_ADDRESS = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
 
 # Clean the URL
 layer_rpc_url = ''.join(c for c in layer_rpc_url if ord(c) >= 32)  # Remove control characters
@@ -26,8 +27,8 @@ def bridge_request():
     # Get ETH address from env
     eth_address = os.getenv('ETH_ADDRESS')
     
-    if not all([ethereum_rpc_url, bridge_contract_address, eth_address]):
-        click.echo(click.style("Error: Required environment variables missing. Please check ETHEREUM_RPC_URL, BRIDGE_CONTRACT_ADDRESS, and ETH_ADDRESS", fg='red'))
+    if not all([ethereum_rpc_url, BRIDGE_CONTRACT_ADDRESS, eth_address]):
+        click.echo(click.style("Error: Required environment variables missing. Please check ETHEREUM_RPC_URL, BRIDGE_CONTRACT_ADDRESS_CURRENT, and ETH_ADDRESS", fg='red'))
         return
 
     try:
@@ -55,7 +56,7 @@ def bridge_request():
             return
 
         # Initialize contract
-        contract = w3.eth.contract(address=bridge_contract_address, abi=contract_abi)
+        contract = w3.eth.contract(address=BRIDGE_CONTRACT_ADDRESS, abi=contract_abi)
 
         # Get user inputs with defaults
         default_amount = 69000000000000000000

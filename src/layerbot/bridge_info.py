@@ -52,7 +52,7 @@ def get_deposit_timestamps_from_ethereum(w3, contract):
 def setup_csv():
     """Setup CSV file with headers if it doesn't exist or if headers are missing."""
     csv_file = 'bridge_deposits.csv'    
-    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Status', 'Query Data']
+    headers = ['Timestamp', 'Deposit ID', 'Sender', 'Recipient', 'Amount', 'Tip', 'Block Height', 'Query ID', 'Status', 'Claimed Timestamp', 'Query Data', 'Bridge Contract Address']
     
     try:
         # Check if file exists and has headers
@@ -100,7 +100,7 @@ def get_existing_deposit_ids():
     return existing_ids
 
 
-def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=False):
+def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=False, contract_address=None):
     """Save deposit information to CSV file using Ethereum transaction timestamp."""
     csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
     if not csv_file:
@@ -119,6 +119,10 @@ def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=Fa
     # Generate query ID and data for this deposit
     query_info = generate_queryId(deposit_id)
     
+    # Use the provided contract address or default to BRIDGE_CONTRACT_ADDRESS_CURRENT
+    if contract_address is None:
+        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1') or os.getenv('BRIDGE_CONTRACT_ADDRESS_0', '')
+    
     with open(csv_file, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -131,7 +135,9 @@ def save_deposit_to_csv(deposit_id, deposit_info, deposit_timestamps, claimed=Fa
             deposit_info[4],
             query_info['queryId'],
             'completed' if claimed else 'in progress',
-            query_info['queryData']
+            '',  # Claimed Timestamp - empty for new deposits, will be filled when first detected as claimed
+            query_info['queryData'],
+            contract_address
         ])
 
 def check_withdrawal_status(w3, contract, withdraw_id):
@@ -168,9 +174,9 @@ def update_withdrawal_status():
         abi = load_abi()
         
         # Create contract instance
-        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_0')
         if not contract_address:
-            print("Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
+            print("Error: BRIDGE_CONTRACT_ADDRESS_0 not found in .env file")
             return
             
         contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
@@ -215,10 +221,12 @@ def main():
     # Load environment variables
     load_dotenv()
     
-    # Get required environment variables
-    contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+    # Get required environment variables - use the current active bridge contract address
+    # Try BRIDGE_CONTRACT_ADDRESS_CURRENT first, fall back to _1 for backwards compatibility
+    contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
     if not contract_address:
-        print("Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
+        print("Error: BRIDGE_CONTRACT_ADDRESS_CURRENT not found in .env file")
+        print("(Legacy: BRIDGE_CONTRACT_ADDRESS_1 also not found)")
         return
         
     # Get the RPC URL from environment
@@ -314,9 +322,43 @@ def main():
         
         # 3. Iterate through all deposits
         print("\nFetching all deposits...")
-        current_deposit_id = 1
+        
+        # Determine starting deposit ID
+        # 1. Check if BRIDGE_START_DEPOSIT_ID is set in .env (for explicit control)
+        # 2. If contract has existing deposits on-chain, use that as a hint
+        # 3. Otherwise start from next ID after what's in CSV, or 1 if CSV is empty
+        
+        start_id_override = os.getenv('BRIDGE_START_DEPOSIT_ID')
+        if start_id_override:
+            current_deposit_id = int(start_id_override)
+            print(f"Using BRIDGE_START_DEPOSIT_ID from .env: {current_deposit_id}")
+        else:
+            # Smart detection: check if this contract already has deposits
+            try:
+                on_chain_deposit_id = contract.functions.depositId().call()
+                if on_chain_deposit_id > 0 and existing_ids:
+                    # Contract has deposits. If CSV has data, continue from where we left off
+                    max_csv_id = max(existing_ids)
+                    if on_chain_deposit_id > max_csv_id:
+                        # There are new deposits on-chain we haven't seen
+                        current_deposit_id = max_csv_id + 1
+                        print(f"Continuing from CSV max ID + 1: {current_deposit_id} (on-chain has {on_chain_deposit_id})")
+                    else:
+                        # We're caught up, start from next expected
+                        current_deposit_id = on_chain_deposit_id + 1
+                        print(f"CSV is current, checking for new deposits from: {current_deposit_id}")
+                else:
+                    # Fresh contract or fresh CSV, start from 1
+                    current_deposit_id = 1
+                    print(f"Starting fresh from deposit ID: 1")
+            except Exception as e:
+                print(f"Could not read depositId from contract: {e}")
+                current_deposit_id = 1
+        
         new_deposits = 0
         new_deposits_for_discord = []  # Track new deposits for Discord alerts
+        
+        print(f"Scanning deposits starting from ID {current_deposit_id} (CSV has {len(existing_ids)} existing deposits)")
         
         while True:
             try:
@@ -366,8 +408,8 @@ def main():
                     }
                     new_deposits_for_discord.append(deposit_data)
                     
-                    # Save to CSV
-                    save_deposit_to_csv(current_deposit_id, deposit_info, deposit_timestamps, is_claimed)
+                    # Save to CSV with the contract address
+                    save_deposit_to_csv(current_deposit_id, deposit_info, deposit_timestamps, is_claimed, contract_address)
                     new_deposits += 1
                 
                 current_deposit_id += 1

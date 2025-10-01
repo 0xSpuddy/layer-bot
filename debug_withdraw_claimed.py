@@ -14,8 +14,8 @@ def main():
     # Load environment variables
     load_dotenv()
     
-    # Get required environment variables
-    contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS')
+    # Get required environment variables - can check either contract
+    contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_1') or os.getenv('BRIDGE_CONTRACT_ADDRESS_0')
     rpc_url = os.getenv('ETHEREUM_RPC_URL')
     
     print("=== Debug withdrawClaimed Function ===")
@@ -23,7 +23,7 @@ def main():
     print(f"RPC URL: {rpc_url[:20]}...{rpc_url[-10:] if rpc_url else 'NOT SET'}")
     
     if not contract_address:
-        print("❌ Error: BRIDGE_CONTRACT_ADDRESS not found in .env file")
+        print("❌ Error: BRIDGE_CONTRACT_ADDRESS_0 or BRIDGE_CONTRACT_ADDRESS_1 not found in .env file")
         return
         
     if not rpc_url:

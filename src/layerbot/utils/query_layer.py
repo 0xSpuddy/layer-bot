@@ -47,6 +47,7 @@ def get_claimed_deposit_ids():
     """
     Query the Layer chain to determine if deposits have been claimed.
     Returns a set of successfully claimed deposit IDs.
+    Also captures the timestamp when a deposit is first detected as claimed.
     """
     try:
         # Load environment variables
@@ -98,6 +99,9 @@ def get_claimed_deposit_ids():
         
         print(f"\nFound {len(claimed_ids)} claimed deposits")
         
+        # Get current timestamp for newly claimed deposits
+        current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
         # Update the CSV file
         rows = []
         with open(base_csv, 'r') as f:
@@ -106,7 +110,19 @@ def get_claimed_deposit_ids():
             for row in reader:
                 # Update Status column based on query results (maintain backward compatibility)
                 if row['Deposit ID'] in claimed_ids:
+                    # Check if this is a newly claimed deposit (status wasn't 'completed' before)
+                    was_previously_completed = (str(row.get('Status', '')).lower() == 'completed' or 
+                                               str(row.get('Claimed', '')).lower() == 'yes')
+                    
                     row['Status'] = 'completed'
+                    
+                    # Capture claim timestamp only if this is the first time we're detecting it as claimed
+                    # AND the Claimed Timestamp field exists
+                    if 'Claimed Timestamp' in fieldnames:
+                        if not was_previously_completed and not row.get('Claimed Timestamp', '').strip():
+                            row['Claimed Timestamp'] = current_timestamp
+                            print(f"  → First time detected as claimed! Timestamp: {current_timestamp}")
+                    
                     # Keep old Claimed column for backward compatibility if it exists
                     if 'Claimed' in row:
                         row['Claimed'] = 'yes'
