@@ -369,7 +369,12 @@ def show_deposits():
         
         # Convert boolean columns to proper format
         withdrawals_df['success'] = withdrawals_df['success'].astype(bool)
-        withdrawals_df['Claimed'] = withdrawals_df['Claimed'].astype(bool)
+        
+        # Add Claimed column if it doesn't exist
+        if 'Claimed' not in withdrawals_df.columns:
+            withdrawals_df['Claimed'] = False  # Default to False for all withdrawals
+        else:
+            withdrawals_df['Claimed'] = withdrawals_df['Claimed'].astype(bool)
         
         # Convert Amount to TRB format if it exists (divide by 10^6 for loya to TRB conversion)
         if 'Amount' in withdrawals_df.columns:

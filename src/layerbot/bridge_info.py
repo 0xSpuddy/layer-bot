@@ -173,10 +173,10 @@ def update_withdrawal_status():
         # Load contract ABI
         abi = load_abi()
         
-        # Create contract instance
-        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_0')
+        # Create contract instance - try current first, then fall back to V1
+        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
         if not contract_address:
-            print("Error: BRIDGE_CONTRACT_ADDRESS_0 not found in .env file")
+            print("Error: BRIDGE_CONTRACT_ADDRESS_CURRENT or BRIDGE_CONTRACT_ADDRESS_1 not found in .env file")
             return
             
         contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
@@ -202,12 +202,21 @@ def update_withdrawal_status():
             is_claimed = check_withdrawal_status(w3, contract, withdraw_id)
             df.at[index, 'Claimed'] = is_claimed
             
-        # Reorder columns (include Amount column if it exists)
-        base_columns = ['withdraw_id', 'creator', 'recipient', 'success', 'Claimed', 'txhash']
-        if 'Amount' in df.columns:
-            column_order = base_columns + ['Amount']
-        else:
-            column_order = base_columns
+        # Reorder columns to ensure consistent order: Timestamp, creator, recipient, success, Claimed, txhash, withdraw_id, Amount
+        # Build column order based on what exists in the dataframe
+        column_order = []
+        
+        # Add columns in preferred order if they exist
+        preferred_order = ['Timestamp', 'creator', 'recipient', 'success', 'Claimed', 'txhash', 'withdraw_id', 'Amount']
+        for col in preferred_order:
+            if col in df.columns:
+                column_order.append(col)
+        
+        # Add any remaining columns that weren't in the preferred list
+        for col in df.columns:
+            if col not in column_order:
+                column_order.append(col)
+        
         df = df[column_order]
             
         # Save updated CSV
