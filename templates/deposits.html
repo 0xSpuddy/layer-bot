@@ -249,6 +249,38 @@
                         </div>
                     </div>
 
+                    <!-- Processing Time Statistics -->
+                    {% if processing_stats and processing_stats['count'] > 0 %}
+                    <div class="data-section" style="margin-bottom: 2rem;">
+                        <div class="data-header">
+                            <div class="data-header-left">
+                                <h3><i class="fas fa-stopwatch"></i> Processing Time Statistics</h3>
+                                <div class="header-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Completed with Timestamps</span>
+                                        <span class="stat-value">{{ processing_stats['count'] }}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Average Time</span>
+                                        <span class="stat-value">{{ "%.2f"|format(processing_stats['avg']) }} hrs</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Median Time</span>
+                                        <span class="stat-value">{{ "%.2f"|format(processing_stats['median']) }} hrs</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Min Time</span>
+                                        <span class="stat-value">{{ "%.2f"|format(processing_stats['min']) }} hrs</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Max Time</span>
+                                        <span class="stat-value">{{ "%.2f"|format(processing_stats['max']) }} hrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Deposits Table -->
                     <div class="table-container">
@@ -298,6 +330,22 @@
                                                     <span class="address-label">Query ID</span>
                                                     <span class="address-value">{{ deposit['Query ID'] }}</span>
                                                 </div>
+                                                <div class="address-item">
+                                                    <span class="address-label">Bridge Contract</span>
+                                                    <span class="address-value">{{ deposit.get('Bridge Contract Address', 'N/A') }}</span>
+                                                </div>
+                                                {% if deposit.get('Claimed Timestamp') and deposit['Claimed Timestamp'] %}
+                                                <div class="address-item">
+                                                    <span class="address-label">Claimed Timestamp</span>
+                                                    <span class="address-value">{{ deposit['Claimed Timestamp'] }}</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if deposit.get('Processing Time (hours)') %}
+                                                <div class="address-item">
+                                                    <span class="address-label">Processing Time</span>
+                                                    <span class="address-value" style="color: #4ade80; font-weight: 600;">{{ "%.2f"|format(deposit['Processing Time (hours)']) }} hours</span>
+                                                </div>
+                                                {% endif %}
                                                 <div class="address-item">
                                                     <span class="address-label">Query Data</span>
                                                     <span class="address-value">{{ deposit['Query Data'] }}</span>
