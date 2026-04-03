@@ -16,6 +16,24 @@ app = Flask(__name__)
 
 # Get mount path from environment variable, default to empty string for root mount
 MOUNT_PATH = os.environ.get('MOUNT_PATH', '').rstrip('/')
+
+# Map known bridge contract addresses to human-readable version labels.
+# Keys are lowercased for case-insensitive matching.
+def _build_contract_versions():
+    mapping = {}
+    for env_var, label in [
+        ('BRIDGE_CONTRACT_ADDRESS_0', 'V0'),
+        ('BRIDGE_CONTRACT_ADDRESS_1', 'V1'),
+        ('BRIDGE_CONTRACT_ADDRESS_CURRENT', 'V1'),
+        ('BRIDGE_CONTRACT_V2_ADDRESS', 'V2'),
+    ]:
+        addr = os.environ.get(env_var, '')
+        if addr:
+            mapping[addr.lower()] = label
+    return mapping
+
+CONTRACT_VERSIONS = _build_contract_versions()
+
 # Ensure mount path starts with / if it's not empty
 if MOUNT_PATH and not MOUNT_PATH.startswith('/'):
     MOUNT_PATH = '/' + MOUNT_PATH
@@ -180,6 +198,18 @@ def show_deposits():
         deposits_df['Formatted_Timestamp'] = '1970-01-01 00:00:00 UTC'
         deposits_df['Age'] = 'N/A'
     
+    # Compute a human-readable contract version label (V0 / V1 / V2) from the address
+    if 'Bridge Contract Address' in deposits_df.columns:
+        deposits_df['Contract_Version'] = (
+            deposits_df['Bridge Contract Address']
+            .fillna('')
+            .str.lower()
+            .map(CONTRACT_VERSIONS)
+            .fillna('Unknown')
+        )
+    else:
+        deposits_df['Contract_Version'] = 'Unknown'
+
     # Keep original data for chart (after timestamp processing, before filtering)
     chart_deposits_df = deposits_df.copy()
     
@@ -334,13 +364,35 @@ def show_deposits():
         withdrawals_df['withdraw_id'] = pd.to_numeric(withdrawals_df['withdraw_id'])
         
         # Convert boolean columns to proper format
-        withdrawals_df['success'] = withdrawals_df['success'].astype(bool)
-        
-        # Add Claimed column if it doesn't exist
+        # 'success' may be blank for stub rows — treat blank as False
+        withdrawals_df['success'] = (
+            withdrawals_df['success']
+            .fillna('')
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .isin(['true', '1', 'yes'])
+        )
+
+        # 'Claimed' can be True/False or blank ('') for stub rows where we haven't
+        # yet confirmed status.  Blank rows will show as "Unknown" in the UI.
         if 'Claimed' not in withdrawals_df.columns:
-            withdrawals_df['Claimed'] = False  # Default to False for all withdrawals
+            withdrawals_df['Claimed'] = False
         else:
-            withdrawals_df['Claimed'] = withdrawals_df['Claimed'].astype(bool)
+            withdrawals_df['Claimed'] = (
+                withdrawals_df['Claimed']
+                .fillna('')
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .isin(['true', '1', 'yes'])
+            )
+
+        # Rows with no transaction data (no creator AND no amount) are stub rows
+        # that represent withdrawal IDs we know exist on-chain but have no details for.
+        has_creator = withdrawals_df['creator'].fillna('').astype(str).str.strip().ne('')
+        has_amount  = withdrawals_df['Amount'].fillna('').astype(str).str.strip().ne('')
+        withdrawals_df['has_tx_data'] = has_creator | has_amount
         
         # Convert Amount to TRB format if it exists (divide by 10^6 for loya to TRB conversion)
         if 'Amount' in withdrawals_df.columns:

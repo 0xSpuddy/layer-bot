@@ -214,7 +214,7 @@ def report_test_value(currency, report_all):
                 'oracle',
                 'tip',
                 query_data,
-                '10000loya',
+                '1111loya',
                 '--from', account_name,
                 '--gas', '600000',
                 '--fees', '15loya',

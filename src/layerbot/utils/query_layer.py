@@ -313,6 +313,50 @@ def get_total_reporter_power():
     Returns the total reporter power as a string.
     """
 
+def get_last_withdrawal_id():
+    """
+    Query the Layer chain for the last (highest) withdrawal ID.
+    Since withdrawal IDs are incremented only by successful MsgWithdrawTokens
+    transactions, all integers from 1 to this value have a corresponding withdrawal.
+    Returns the last withdrawal ID as an int, or None on error.
+    """
+    try:
+        load_dotenv()
+        layer_rpc_url = os.getenv('LAYER_RPC_URL')
+        if not layer_rpc_url:
+            print("Error: LAYER_RPC_URL not found in .env file")
+            return None
+
+        cmd = [
+            './layerd', 'query', 'bridge', 'get-last-withdrawal-id',
+            '--node', layer_rpc_url,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+        # Output is typically "withdrawal_id: <N>" or similar YAML
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            for prefix in ('withdrawal_id:', 'last_withdrawal_id:', 'id:'):
+                if line.startswith(prefix):
+                    val = line.split(':', 1)[1].strip().strip('"')
+                    return int(val)
+
+        # Try parsing as plain integer (some versions just print the number)
+        stripped = result.stdout.strip()
+        if stripped.isdigit():
+            return int(stripped)
+
+        print(f"Could not parse get-last-withdrawal-id output: {result.stdout!r}")
+        return None
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error querying last withdrawal ID: {e.stderr}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error querying last withdrawal ID: {e}")
+        return None
+
+
 def get_withdraw_tokens_txs():
     """
     Query the Layer chain for all withdraw tokens transactions and save them to a CSV file.
@@ -330,8 +374,15 @@ def get_withdraw_tokens_txs():
             print("Error: LAYER_RPC_URL not found in .env file")
             return []
             
-        # Execute the layerd query command
-        cmd = ['./layerd', 'query', 'txs', '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'', '--node', layer_rpc_url]
+        # Execute the layerd query command.
+        # --limit is set high enough to return all withdrawals in a single page without
+        # requiring manual pagination (bridge activity is expected to stay well under this).
+        cmd = [
+            './layerd', 'query', 'txs',
+            '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'',
+            '--node', layer_rpc_url,
+            '--limit', '1000',
+        ]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
         # print("\nDebug - Command output received. Starting parse...")
@@ -411,23 +462,67 @@ def get_withdraw_tokens_txs():
         for tx in transactions:
             print(f"Transaction: {tx}")
         
-        # Save to CSV
-        if transactions:
-            # Get all possible fields from all transactions
-            fieldnames = set()
-            for tx in transactions:
-                fieldnames.update(tx.keys())
-            fieldnames = sorted(list(fieldnames))
-            
+        # Merge found transactions into the existing CSV rather than overwriting it.
+        # The Layer node may be pruned so only recent transactions are returned;
+        # overwriting would destroy Ethereum-event-derived rows already in the CSV.
+
+        # Read existing rows, keyed by withdraw_id
+        existing_by_id = {}
+        if os.path.exists(csv_file):
+            try:
+                with open(csv_file, 'r', newline='') as ef:
+                    reader = csv.DictReader(ef)
+                    if reader.fieldnames:
+                        for row in reader:
+                            wid = str(row.get('withdraw_id', '')).replace('"', '').strip()
+                            if wid and wid != 'nan':
+                                existing_by_id[wid] = dict(row)
+            except Exception as e:
+                print(f"Warning: could not read existing withdrawals CSV: {e}")
+
+        new_count = 0
+        for tx in transactions:
+            wid = str(tx.get('withdraw_id', '')).replace('"', '').strip()
+            if not wid:
+                continue
+            if wid in existing_by_id:
+                # Update only Layer-side fields (preserve Ethereum-derived data)
+                for key in ('creator', 'txhash', 'success'):
+                    val = tx.get(key)
+                    if val is not None and str(val).strip() not in ('', 'nan'):
+                        existing_by_id[wid][key] = val
+            else:
+                existing_by_id[wid] = {k: str(v) for k, v in tx.items()}
+                new_count += 1
+
+        if existing_by_id:
+            all_fieldnames = set()
+            for row in existing_by_id.values():
+                all_fieldnames.update(str(k) for k in row.keys())
+
+            preferred = ['Timestamp', 'creator', 'recipient', 'success', 'Claimed', 'txhash', 'withdraw_id', 'Amount']
+            ordered_fields = [f for f in preferred if f in all_fieldnames]
+            for f in sorted(all_fieldnames):
+                if f not in ordered_fields:
+                    ordered_fields.append(f)
+
+            def _safe_int(v):
+                try:
+                    return int(str(v).replace('"', '').strip())
+                except Exception:
+                    return 0
+
+            sorted_rows = sorted(existing_by_id.values(), key=lambda r: _safe_int(r.get('withdraw_id', 0)))
+
             with open(csv_file, 'w', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer = csv.DictWriter(f, fieldnames=ordered_fields, extrasaction='ignore')
                 writer.writeheader()
-                writer.writerows(transactions)
-                
-            print(f"Saved {len(transactions)} withdraw transactions to {csv_file}")
-            print(f"CSV columns: {fieldnames}")
+                writer.writerows(sorted_rows)
+
+            print(f"Saved {len(sorted_rows)} withdrawals to {csv_file} ({new_count} new from Layer query)")
+            print(f"CSV columns: {ordered_fields}")
         else:
-            print("No withdrawal transactions found")
+            print("No withdrawal transactions found and no existing data")
             
         return transactions
         

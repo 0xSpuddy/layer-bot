@@ -108,7 +108,7 @@ def update_withdrawal_amounts():
             if current_amount and current_amount != '':
                 continue
                 
-            if tx_hash and tx_hash != '':
+            if tx_hash and tx_hash not in ('', 'nan') and not (isinstance(tx_hash, float) and tx_hash != tx_hash):
                 print(f"Querying transaction {tx_hash} for amount...")
                 tx_details = query_transaction_details(tx_hash)
                 
@@ -172,7 +172,7 @@ def update_withdrawal_timestamps():
                 current_timestamp != 'nan'):
                 continue
                 
-            if tx_hash and tx_hash != '':
+            if tx_hash and tx_hash not in ('', 'nan') and not (isinstance(tx_hash, float) and tx_hash != tx_hash):
                 print(f"Querying transaction {tx_hash} for timestamp...")
                 tx_details = query_transaction_details(tx_hash)
                 

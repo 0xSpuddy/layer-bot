@@ -25,7 +25,7 @@ def execute_tip_tx(query_data):
     cmd = [
         "./layerd", "tx", "oracle", "tip",
         query_data,
-        "10000loya",
+        "1111loya",
         "--from", account_name,
         "--fees", "12loya",
         "--gas", "300000",

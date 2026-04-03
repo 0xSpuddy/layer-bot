@@ -53,7 +53,7 @@ def auto_tipper(query_data, interval):
                 'oracle',
                 'tip',
                 query_data_to_use,
-                '10000loya',
+                '1111loya',
                 '--from', account_name,
                 '--gas', '600000',
                 '--fees', '15loya',

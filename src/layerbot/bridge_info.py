@@ -80,8 +80,12 @@ def setup_csv():
         print(f"Error setting up CSV file: {e}")
         return False
 
-def get_existing_deposit_ids():
-    """Read the CSV file and return a set of existing deposit IDs."""
+def get_existing_deposit_ids(contract_address=None):
+    """Read the CSV file and return a set of existing deposit IDs.
+    
+    If contract_address is provided, only return IDs for that specific contract.
+    This prevents deposit ID collisions between contracts that each start from ID 1.
+    """
     csv_file = os.getenv('BRIDGE_DEPOSITS_CSV')
     if not csv_file:
         print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
@@ -93,8 +97,11 @@ def get_existing_deposit_ids():
             with open(csv_file, 'r', newline='') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if 'Deposit ID' in row:  # Check if the column exists
-                        existing_ids.add(int(row['Deposit ID']))
+                    if 'Deposit ID' not in row:
+                        continue
+                    if contract_address and row.get('Bridge Contract Address', '').lower() != contract_address.lower():
+                        continue
+                    existing_ids.add(int(row['Deposit ID']))
         except Exception as e:
             print(f"Error reading CSV file: {e}")
     return existing_ids
@@ -173,14 +180,28 @@ def update_withdrawal_status():
         # Load contract ABI
         abi = load_abi()
         
-        # Create contract instance - try current first, then fall back to V1
-        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
-        if not contract_address:
-            print("Error: BRIDGE_CONTRACT_ADDRESS_CURRENT or BRIDGE_CONTRACT_ADDRESS_1 not found in .env file")
+        # Build contract instances for all configured bridge contracts
+        # A withdrawal is claimed if ANY contract reports it as claimed
+        raw_addrs = [
+            os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT'),
+            os.getenv('BRIDGE_CONTRACT_ADDRESS_1'),
+            os.getenv('BRIDGE_CONTRACT_V2_ADDRESS'),
+        ]
+        # Deduplicate while preserving order, skip empty values
+        seen = set()
+        contract_addrs = []
+        for a in raw_addrs:
+            if a and a.lower() not in seen:
+                seen.add(a.lower())
+                contract_addrs.append(a)
+
+        if not contract_addrs:
+            print("Error: No bridge contract addresses found in .env (BRIDGE_CONTRACT_ADDRESS_CURRENT, BRIDGE_CONTRACT_ADDRESS_1, or BRIDGE_CONTRACT_V2_ADDRESS)")
             return
-            
-        contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
-        
+
+        contracts = [w3.eth.contract(address=Web3.to_checksum_address(a), abi=abi) for a in contract_addrs]
+        print(f"Checking withdrawClaimed against {len(contracts)} contract(s): {contract_addrs}")
+
         # Read existing CSV file
         if not os.path.exists(csv_file):
             print(f"Withdrawals CSV file not found: {csv_file}")
@@ -189,17 +210,18 @@ def update_withdrawal_status():
         # Read the CSV file
         df = pd.read_csv(csv_file)
         
-        # Clean the withdraw_id column by removing quotes and converting to integer
-        df['withdraw_id'] = df['withdraw_id'].str.replace('"', '').astype(int)
+        # Clean the withdraw_id column — handle both quoted strings ('"68"') and
+        # already-numeric values that pandas read back as int/float from a previous cycle
+        df['withdraw_id'] = df['withdraw_id'].astype(str).str.replace('"', '').astype(int)
         
         # Add 'Claimed' column if it doesn't exist
         if 'Claimed' not in df.columns:
             df['Claimed'] = False
             
-        # Update claimed status for each withdrawal
+        # Update claimed status for each withdrawal — claimed on any contract counts
         for index, row in df.iterrows():
-            withdraw_id = row['withdraw_id']  # No need to convert to int again
-            is_claimed = check_withdrawal_status(w3, contract, withdraw_id)
+            withdraw_id = row['withdraw_id']
+            is_claimed = any(check_withdrawal_status(w3, c, withdraw_id) for c in contracts)
             df.at[index, 'Claimed'] = is_claimed
             
         # Reorder columns to ensure consistent order: Timestamp, creator, recipient, success, Claimed, txhash, withdraw_id, Amount
@@ -226,16 +248,15 @@ def update_withdrawal_status():
     except Exception as e:
         print(f"Error updating withdrawal status: {e}")
 
-def main():
+def main(contract_address=None):
     # Load environment variables
     load_dotenv()
     
-    # Get required environment variables - use the current active bridge contract address
-    # Try BRIDGE_CONTRACT_ADDRESS_CURRENT first, fall back to _1 for backwards compatibility
-    contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
+    # Resolve contract address: use provided arg, then CURRENT, then V1 for backwards compatibility
+    if contract_address is None:
+        contract_address = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
     if not contract_address:
-        print("Error: BRIDGE_CONTRACT_ADDRESS_CURRENT not found in .env file")
-        print("(Legacy: BRIDGE_CONTRACT_ADDRESS_1 also not found)")
+        print("Error: No bridge contract address found. Set BRIDGE_CONTRACT_ADDRESS_CURRENT or BRIDGE_CONTRACT_ADDRESS_1 in .env")
         return
         
     # Get the RPC URL from environment
@@ -253,10 +274,10 @@ def main():
             print("Failed to setup CSV file")
             return
         
-        # Get existing deposit IDs from CSV
+        # Get existing deposit IDs from CSV, filtered to this contract only
         print("Getting existing deposit IDs...")
-        existing_ids = get_existing_deposit_ids()
-        print(f"Found {len(existing_ids)} existing deposits in CSV file")
+        existing_ids = get_existing_deposit_ids(contract_address=contract_address)
+        print(f"Found {len(existing_ids)} existing deposits in CSV file for contract {contract_address}")
         
         # Get claimed deposit IDs
         print("Getting claimed deposit IDs...")
@@ -342,42 +363,42 @@ def main():
             current_deposit_id = int(start_id_override)
             print(f"Using BRIDGE_START_DEPOSIT_ID from .env: {current_deposit_id}")
         else:
-            # Smart detection: check if this contract already has deposits
-            try:
-                on_chain_deposit_id = contract.functions.depositId().call()
-                if on_chain_deposit_id > 0 and existing_ids:
-                    # Contract has deposits. If CSV has data, continue from where we left off
-                    max_csv_id = max(existing_ids)
-                    if on_chain_deposit_id > max_csv_id:
-                        # There are new deposits on-chain we haven't seen
-                        current_deposit_id = max_csv_id + 1
-                        print(f"Continuing from CSV max ID + 1: {current_deposit_id} (on-chain has {on_chain_deposit_id})")
-                    else:
-                        # We're caught up, start from next expected
-                        current_deposit_id = on_chain_deposit_id + 1
-                        print(f"CSV is current, checking for new deposits from: {current_deposit_id}")
+            # deposit_id is already fetched above; use it directly to avoid a second RPC call
+            if deposit_id > 0 and existing_ids:
+                # Contract has deposits. If CSV has data, continue from where we left off
+                max_csv_id = max(existing_ids)
+                if deposit_id > max_csv_id:
+                    # There are new deposits on-chain we haven't seen
+                    current_deposit_id = max_csv_id + 1
+                    print(f"Continuing from CSV max ID + 1: {current_deposit_id} (on-chain has {deposit_id})")
                 else:
-                    # Fresh contract or fresh CSV, start from 1
-                    current_deposit_id = 1
-                    print(f"Starting fresh from deposit ID: 1")
-            except Exception as e:
-                print(f"Could not read depositId from contract: {e}")
+                    # We're caught up, start from next expected
+                    current_deposit_id = deposit_id + 1
+                    print(f"CSV is current, checking for new deposits from: {current_deposit_id}")
+            else:
+                # Fresh contract or fresh CSV — scan from 1 up to deposit_id
                 current_deposit_id = 1
+                print(f"Starting fresh scan from deposit ID: 1 up to {deposit_id}")
         
         new_deposits = 0
         new_deposits_for_discord = []  # Track new deposits for Discord alerts
         
-        print(f"Scanning deposits starting from ID {current_deposit_id} (CSV has {len(existing_ids)} existing deposits)")
+        print(f"Scanning deposits starting from ID {current_deposit_id} (CSV has {len(existing_ids)} existing deposits, on-chain counter={deposit_id})")
         
-        while True:
+        # Iterate up to the on-chain depositId counter.  Contracts may not assign deposit IDs
+        # starting from 1 (e.g. V2 continued V1's counter and its first deposit is ID 154),
+        # so empty slots are skipped rather than treated as the end of data.
+        while current_deposit_id <= deposit_id:
             try:
                 print(f"\nFetching deposit {current_deposit_id}...")
                 deposit_info = contract.functions.deposits(current_deposit_id).call()
                 
-                # Check if this is an empty deposit (zero address sender)
+                # Empty slot — this contract never stored a deposit at this ID (common for
+                # contracts that continue a shared counter from a predecessor contract)
                 if deposit_info[0] == '0x0000000000000000000000000000000000000000':
-                    print(f"\nNo more deposits found after ID {current_deposit_id - 1}")
-                    break
+                    print(f"Deposit {current_deposit_id}: empty slot, skipping")
+                    current_deposit_id += 1
+                    continue
                 
                 # Only process if this deposit ID is not already in the CSV
                 if current_deposit_id not in existing_ids:
@@ -445,6 +466,190 @@ def main():
         import traceback
         print("\nFull error traceback:")
         print(traceback.format_exc())
+
+def collect_withdrawals_from_ethereum():
+    """
+    Fetch Withdraw events from all configured bridge contracts on Ethereum.
+
+    Since the Layer node is pruned and MsgWithdrawTokens history is not available,
+    this is the primary source for claimed withdrawal data.  Ethereum event logs are
+    NOT pruned, so this always returns the complete history of claimed withdrawals.
+
+    For each withdrawal ID found in a Withdraw event the following data is recorded:
+      - withdraw_id, creator (Layer sender), recipient (ETH address), Amount (loya),
+        Claimed=True, Timestamp (ETH block time of the claim), success=True
+
+    The results are MERGED into the existing withdrawals CSV so that any Layer-side
+    data already present (txhash, etc.) is preserved.
+    """
+    load_dotenv()
+
+    csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV', 'bridge_withdrawals.csv')
+    rpc_url = os.getenv('ETHEREUM_RPC_URL')
+
+    if not rpc_url:
+        print("Error: ETHEREUM_RPC_URL not found in .env file")
+        return
+
+    try:
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if not w3.is_connected():
+            print("Error: Could not connect to Ethereum RPC")
+            return
+
+        abi = load_abi()
+
+        # Build deduplicated list of contract addresses to scan
+        raw_addrs = [
+            os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT'),
+            os.getenv('BRIDGE_CONTRACT_ADDRESS_1'),
+            os.getenv('BRIDGE_CONTRACT_V2_ADDRESS'),
+        ]
+        seen = set()
+        contract_addrs = []
+        for a in raw_addrs:
+            if a and a.lower() not in seen:
+                seen.add(a.lower())
+                contract_addrs.append(a)
+
+        if not contract_addrs:
+            print("No bridge contract addresses configured")
+            return
+
+        # TOKEN_DECIMAL_PRECISION_MULTIPLIER = 1e12:
+        #   Withdraw event emits amount in wei (18 dec), CSV stores loya (6 dec relative to TRB)
+        #   amount_loya = event_amount_wei / 1e12
+        TOKEN_DECIMAL_PRECISION_MULTIPLIER = 10 ** 12
+
+        eth_withdrawals = {}  # withdraw_id (int) -> row dict
+
+        for contract_address in contract_addrs:
+            try:
+                contract = w3.eth.contract(
+                    address=Web3.to_checksum_address(contract_address), abi=abi
+                )
+                print(f"Fetching Withdraw events from {contract_address}...")
+                withdraw_filter = contract.events.Withdraw.create_filter(
+                    fromBlock=0, toBlock='latest'
+                )
+                events = withdraw_filter.get_all_entries()
+                print(f"  Found {len(events)} Withdraw events")
+
+                for event in events:
+                    withdraw_id = int(event['args']['_depositId'])
+                    block = w3.eth.get_block(event['blockNumber'])
+                    timestamp = datetime.fromtimestamp(block['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                    amount_loya = str(int(event['args']['_amount'] // TOKEN_DECIMAL_PRECISION_MULTIPLIER))
+                    recipient = event['args']['_recipient'].lower()
+                    creator = event['args']['_sender']  # Layer address string
+
+                    eth_withdrawals[withdraw_id] = {
+                        'withdraw_id': str(withdraw_id),
+                        'creator': creator,
+                        'recipient': recipient,
+                        'Amount': amount_loya,
+                        'Claimed': True,
+                        'txhash': '',  # Layer txhash unknown; filled in by MsgWithdrawTokens scan
+                        'success': True,
+                        'Timestamp': timestamp,
+                    }
+                    print(f"  ID={withdraw_id}, {amount_loya} loya, creator={creator[:24]}...")
+
+            except Exception as e:
+                print(f"  Error fetching Withdraw events from {contract_address}: {e}")
+
+        print(f"Total: {len(eth_withdrawals)} unique claimed withdrawals from Ethereum events")
+
+        # Load existing CSV to preserve Layer-side data (txhash, etc.)
+        existing_rows = {}  # withdraw_id str -> row dict
+        if os.path.exists(csv_file):
+            try:
+                df_existing = pd.read_csv(csv_file)
+                df_existing['withdraw_id'] = (
+                    df_existing['withdraw_id'].astype(str).str.replace('"', '').str.strip()
+                )
+                for _, row in df_existing.iterrows():
+                    wid = str(row['withdraw_id']).strip()
+                    if wid and wid != 'nan':
+                        existing_rows[wid] = row.to_dict()
+            except Exception as e:
+                print(f"Warning: could not read existing withdrawals CSV: {e}")
+
+        # Merge: start with existing data, then overlay Ethereum event data
+        merged = {wid: dict(row) for wid, row in existing_rows.items()}
+
+        def _is_blank(val):
+            return str(val).strip() in ('', 'nan', 'None')
+
+        for withdraw_id, eth_row in eth_withdrawals.items():
+            wid_str = str(withdraw_id)
+            if wid_str in merged:
+                # Row already known — update claimed status and fill any blanks
+                merged[wid_str]['Claimed'] = True
+                for field in ('Amount', 'Timestamp', 'creator', 'recipient'):
+                    if _is_blank(merged[wid_str].get(field, '')):
+                        merged[wid_str][field] = eth_row[field]
+            else:
+                # New row from Ethereum event
+                merged[wid_str] = eth_row
+
+        # Fill stub rows for any withdrawal IDs that exist on the Layer chain but
+        # are absent from both Ethereum events and the existing CSV.
+        # get-last-withdrawal-id tells us every integer from 1..last_id has a
+        # corresponding MsgWithdrawTokens transaction (IDs can't be skipped on Layer).
+        try:
+            from layerbot.utils.query_layer import get_last_withdrawal_id
+            last_id = get_last_withdrawal_id()
+            if last_id and last_id > 0:
+                print(f"Last withdrawal ID on Layer chain: {last_id}")
+                for missing_id in range(1, last_id + 1):
+                    if str(missing_id) not in merged:
+                        print(f"  Adding stub row for withdrawal ID {missing_id}")
+                        merged[str(missing_id)] = {
+                            'withdraw_id': str(missing_id),
+                            'creator': '',
+                            'recipient': '',
+                            'Amount': '',
+                            'Claimed': '',
+                            'txhash': '',
+                            'success': '',
+                            'Timestamp': '',
+                        }
+        except Exception as e:
+            print(f"Warning: could not fill withdrawal ID gaps: {e}")
+
+        if not merged:
+            print("No withdrawal data to save")
+            return
+
+        # Write merged data back, sorted by withdraw_id
+        def _safe_int(v):
+            try:
+                return int(str(v).replace('"', '').strip())
+            except Exception:
+                return 0
+
+        sorted_rows = sorted(merged.values(), key=lambda r: _safe_int(r.get('withdraw_id', 0)))
+
+        all_cols = set()
+        for row in sorted_rows:
+            all_cols.update(str(k) for k in row.keys())
+
+        preferred = ['Timestamp', 'creator', 'recipient', 'success', 'Claimed', 'txhash', 'withdraw_id', 'Amount']
+        final_cols = [c for c in preferred if c in all_cols]
+        for c in sorted(all_cols):
+            if c not in final_cols:
+                final_cols.append(c)
+
+        df_out = pd.DataFrame(sorted_rows, columns=final_cols)
+        df_out.to_csv(csv_file, index=False)
+        print(f"Saved {len(sorted_rows)} withdrawals to {csv_file}")
+
+    except Exception as e:
+        print(f"Error collecting withdrawal data from Ethereum: {e}")
+        import traceback
+        print(traceback.format_exc())
+
 
 if __name__ == "__main__":
     main() 
