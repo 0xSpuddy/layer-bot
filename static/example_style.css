@@ -549,6 +549,24 @@ body {
     border-color: #00d4ff;
 }
 
+.badge-warning {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.badge-info {
+    background: rgba(102, 153, 255, 0.2);
+    color: #6699ff;
+    border-color: #6699ff;
+}
+
+.badge-unknown {
+    background: rgba(120, 120, 140, 0.2);
+    color: #9090a8;
+    border-color: #9090a8;
+}
+
 /* Pagination */
 .pagination {
     padding: 1.5rem 2rem;

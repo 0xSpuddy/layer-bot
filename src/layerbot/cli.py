@@ -13,6 +13,7 @@ from layerbot.commands.test import test
 from layerbot.commands.bridge_request import bridge_request
 from layerbot.commands.claim_deposits import claim_deposits
 from layerbot.commands.tip_deposits import tip_deposits
+from layerbot.commands.tip_withdrawals import tip_withdrawals
 from layerbot.commands.add_public_addrs import add_requester
 from layerbot.commands.send_to_requesters import send_to_requesters
 from .commands.bridge_scan import bridge_scan, deposits, withdrawals
@@ -82,6 +83,7 @@ cli.add_command(test)
 cli.add_command(bridge_request)
 cli.add_command(claim_deposits)
 cli.add_command(tip_deposits)
+cli.add_command(tip_withdrawals)
 cli.add_command(add_requester)
 cli.add_command(send_to_requesters)
 cli.add_command(bridge_scan)

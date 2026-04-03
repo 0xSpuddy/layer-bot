@@ -85,6 +85,12 @@
             border-left: 4px solid #ff6b35;
         }
 
+        .data-table .unknown-row {
+            background: rgba(100, 100, 120, 0.08) !important;
+            border-left: 4px solid #555568;
+            opacity: 0.85;
+        }
+
         .expand-indicator {
             color: #a855f7;
             font-weight: bold;
@@ -257,6 +263,9 @@
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ deposit['Deposit ID'] }}</span>
+                                        {% if deposit.get('Contract_Version', 'V1') != 'V1' %}
+                                            <span class="badge" style="font-size:0.7rem; margin-left:4px; background:rgba(0,212,255,0.15); color:#00d4ff; border:1px solid #00d4ff; padding:1px 5px; border-radius:3px;">{{ deposit['Contract_Version'] }}</span>
+                                        {% endif %}
                                     </td>
                                     <td class="value">{{ "%.4f"|format(deposit['Amount']) }}</td>
                                     <td class="time-ago">{{ deposit['Formatted_Timestamp'] }}</td>
@@ -339,7 +348,7 @@
                             </thead>
                             <tbody>
                                 {% for withdrawal in withdrawals %}
-                                <tr class="expandable-row {% if withdrawal['Claimed'] %}claimed-row{% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}ready-to-claim{% else %}invalid-recipient{% endif %}">
+                                <tr class="expandable-row {% if not withdrawal.get('has_tx_data', True) %}unknown-row{% elif withdrawal['Claimed'] %}claimed-row{% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}ready-to-claim{% else %}invalid-recipient{% endif %}">
                                     <td>
                                         <span class="expand-indicator">▶</span>
                                         <span class="font-mono text-green">{{ withdrawal['withdraw_id'] }}</span>
@@ -367,7 +376,9 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if withdrawal['Claimed'] %}
+                                        {% if not withdrawal.get('has_tx_data', True) %}
+                                            <span class="badge badge-unknown">Unknown</span>
+                                        {% elif withdrawal['Claimed'] %}
                                             <span class="badge badge-success">Completed</span>
                                         {% elif withdrawal.get('hours_since_withdrawal') and withdrawal['hours_since_withdrawal'] >= 14 %}
                                             <span class="badge badge-warning">Ready for Claim</span>
@@ -376,7 +387,7 @@
                                         {% endif %}
                                     </td>
                                 </tr>
-                                <tr class="details-row {% if withdrawal['Claimed'] %}claimed-row{% endif %}">
+                                <tr class="details-row {% if withdrawal['Claimed'] %}claimed-row{% elif not withdrawal.get('has_tx_data', True) %}unknown-row{% endif %}">
                                     <td colspan="6">
                                         <div class="address-details">
                                             <div class="address-container">

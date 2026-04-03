@@ -13,6 +13,7 @@ account_name = os.getenv('ACCOUNT_NAME')
 account_tellor_address = os.getenv('ACCOUNT_TELLOR_ADDRESS')
 csv_path = os.getenv('BRIDGE_DEPOSITS_CSV', 'bridge_deposits.csv')
 ethereum_rpc_url = os.getenv('ETHEREUM_RPC_URL')
+chain_id = os.getenv('LAYER_CHAIN_ID')
 BRIDGE_CONTRACT_ADDRESS_0 = os.getenv('BRIDGE_CONTRACT_ADDRESS_0')
 
 # Clean the URL
@@ -30,8 +31,8 @@ def claim_deposits():
     click.echo(f"ACCOUNT_TELLOR_ADDRESS: {account_tellor_address}")
     click.echo(f"CSV_PATH: {csv_path}")
 
-    if not all([layer_rpc_url, account_name, account_tellor_address, csv_path]):
-        click.echo(click.style("Error: Required environment variables missing. Please check LAYER_RPC_URL, ACCOUNT_NAME, ACCOUNT_TELLOR_ADDRESS, and BRIDGE_DEPOSITS_CSV", fg='red'))
+    if not all([layer_rpc_url, account_name, account_tellor_address, csv_path, chain_id]):
+        click.echo(click.style("Error: Required environment variables missing. Please check LAYER_RPC_URL, ACCOUNT_NAME, ACCOUNT_TELLOR_ADDRESS, BRIDGE_DEPOSITS_CSV, and LAYER_CHAIN_ID", fg='red'))
         return
 
     # Prompt for deposit ID
@@ -88,7 +89,7 @@ def claim_deposits():
             flags = [
                 '--from', account_name,
                 '--gas', 'auto',
-                '--chain-id', 'layertest-4',
+                '--chain-id', chain_id,
                 '--fees', '10loya',
                 '--yes',
                 '--node', layer_rpc_url
