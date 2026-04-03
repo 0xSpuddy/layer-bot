@@ -13,14 +13,14 @@ def generate_queryId(deposit_id):
     """
     Generate queryData and queryId for a bridge deposit.
     Follows the Solidity pattern:
-    bytes queryData = abi.encode("TRBBridge", abi.encode(true,depositId));
+    bytes queryData = abi.encode("TRBBridgeV2", abi.encode(true,depositId));
     bytes32 queryId = keccak256(queryData);
     """
     # Encode the inner tuple (true, deposit_id)
     inner_data = encode(['bool', 'uint256'], [True, deposit_id])
     
-    # Encode the outer tuple ("TRBBridge", inner_data)
-    query_data = encode(['string', 'bytes'], ['TRBBridge', inner_data])
+    # Encode the outer tuple ("TRBBridgeV2", inner_data)
+    query_data = encode(['string', 'bytes'], ['TRBBridgeV2', inner_data])
     
     # Generate queryId using keccak256
     query_id = keccak(query_data)
@@ -29,6 +29,46 @@ def generate_queryId(deposit_id):
         'queryData': query_data.hex(),
         'queryId': query_id.hex()
     }
+
+def generate_withdrawal_queryId(withdrawal_id):
+    """
+    Generate queryData and queryId for a bridge withdrawal.
+    Follows the Solidity pattern:
+    bytes queryData = abi.encode("TRBBridgeV2", abi.encode(false, withdrawalId));
+    bytes32 queryId = keccak256(queryData);
+    """
+    inner_data = encode(['bool', 'uint256'], [False, withdrawal_id])
+    query_data = encode(['string', 'bytes'], ['TRBBridgeV2', inner_data])
+    query_id = keccak(query_data)
+    return {
+        'queryData': query_data.hex(),
+        'queryId': query_id.hex()
+    }
+
+def decode_query_data(hex_str):
+    """
+    Decode a bridge queryData hex string into its component fields.
+    Supports both legacy 'TRBBridge' and current 'TRBBridgeV2' query types.
+
+    Returns a dict with:
+        query_type  - 'TRBBridgeV2' or 'TRBBridge'
+        is_deposit  - bool (True for deposits, False for withdrawals)
+        deposit_id  - int
+    Returns None if the data cannot be decoded.
+    """
+    try:
+        from eth_abi import decode as abi_decode
+        raw = bytes.fromhex(hex_str.lstrip('0x'))
+        query_type, inner_bytes = abi_decode(['string', 'bytes'], raw)
+        is_deposit, deposit_id = abi_decode(['bool', 'uint256'], inner_bytes)
+        return {
+            'query_type': query_type,
+            'is_deposit': is_deposit,
+            'deposit_id': deposit_id,
+        }
+    except Exception as e:
+        print(f"Error decoding query data: {e}")
+        return None
 
 def get_report_timestamp(query_id):
     """

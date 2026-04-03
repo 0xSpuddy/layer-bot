@@ -219,7 +219,6 @@ def report_test_value(currency, report_all):
                 '--gas', '600000',
                 '--fees', '15loya',
                 '--chain-id', chain_id,
-                '--sign-mode', 'textual',
                 '--yes',
                 '--node', layer_rpc_url
             ]
