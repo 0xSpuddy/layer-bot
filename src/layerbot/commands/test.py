@@ -38,6 +38,12 @@ def list_keys():
 @click.argument('account_name')
 def claim_deposits(creator, deposit_ids, timestamps, account_name):
     """Claim bridge deposits on Layer chain."""
+    load_dotenv()
+    chain_id = os.getenv('LAYER_CHAIN_ID')
+    if not chain_id:
+        print("Error: LAYER_CHAIN_ID not found in .env file")
+        return
+
     max_retries = 7
     attempt = 1
     
@@ -51,7 +57,7 @@ def claim_deposits(creator, deposit_ids, timestamps, account_name):
                 timestamps,
                 '--from', account_name,
                 '--gas', 'auto',
-                '--chain-id', 'layertest-4',
+                '--chain-id', chain_id,
                 '--fees', '10loya',
                 '--yes'
             ]

@@ -1,5 +1,18 @@
 # Environment Configuration Guide
 
+## Layer Chain Configuration
+
+### Required Variables
+
+#### `LAYER_CHAIN_ID`
+The chain ID for the Layer blockchain (used in all `layerd` transaction commands).
+
+```bash
+LAYER_CHAIN_ID=layertest-5
+```
+
+---
+
 ## Bridge Contract Configuration
 
 ### Required Variables

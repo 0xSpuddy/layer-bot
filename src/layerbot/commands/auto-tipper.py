@@ -22,9 +22,10 @@ def auto_tipper(query_data, interval):
     load_dotenv()
     account_name = os.getenv('ACCOUNT_NAME')
     layer_rpc_url = os.getenv('LAYER_RPC_URL', '').strip()
+    chain_id = os.getenv('LAYER_CHAIN_ID')
 
-    if not account_name or not layer_rpc_url:
-        click.echo(click.style("Error: Required environment variables missing. Please check ACCOUNT_NAME and LAYER_RPC_URL", fg='red'))
+    if not account_name or not layer_rpc_url or not chain_id:
+        click.echo(click.style("Error: Required environment variables missing. Please check ACCOUNT_NAME, LAYER_RPC_URL, and LAYER_CHAIN_ID", fg='red'))
         return
 
     # Display the account name to be used
@@ -56,7 +57,7 @@ def auto_tipper(query_data, interval):
                 '--from', account_name,
                 '--gas', '600000',
                 '--fees', '15loya',
-                '--chain-id', 'layertest-4',
+                '--chain-id', chain_id,
                 '--sign-mode', 'textual',
                 '--yes',
                 '--node', layer_rpc_url

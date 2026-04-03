@@ -16,6 +16,10 @@ layer_rpc_url = os.getenv('LAYER_RPC_URL')
 if not layer_rpc_url:
     raise ValueError("LAYER_RPC_URL not found in .env file")
 
+chain_id = os.getenv('LAYER_CHAIN_ID')
+if not chain_id:
+    raise ValueError("LAYER_CHAIN_ID not found in .env file")
+
 def execute_tip_tx(query_data):
     """Execute the tip transaction command"""
     cmd = [
@@ -26,7 +30,7 @@ def execute_tip_tx(query_data):
         "--fees", "12loya",
         "--gas", "300000",
         "--yes",
-        "--chain-id", "layertest-4",
+        "--chain-id", chain_id,
         "--node", layer_rpc_url
     ]
     
