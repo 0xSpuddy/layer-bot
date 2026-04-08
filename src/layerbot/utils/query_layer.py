@@ -413,6 +413,18 @@ def get_withdraw_tokens_txs():
         if not layer_rpc_url:
             print("Error: LAYER_RPC_URL not found in .env file")
             return []
+
+        def _normalize_evm_recipient(recipient):
+            recipient = str(recipient).strip()
+            if recipient.startswith('0x'):
+                return recipient.lower()
+            if len(recipient) == 40:
+                try:
+                    int(recipient, 16)
+                    return f"0x{recipient.lower()}"
+                except ValueError:
+                    pass
+            return recipient
             
         # Execute the layerd query command.
         # --limit is set high enough to return all withdrawals in a single page without
@@ -464,8 +476,8 @@ def get_withdraw_tokens_txs():
                 if line.startswith('value:'):
                     amount = line.split('value: ')[1].strip()
                     # Remove 'loya' suffix if present
-                    current_tx['amount'] = amount.replace('loya', '').strip()
-                    print(f"Found amount: {current_tx['amount']}")
+                    current_tx['Amount'] = amount.replace('loya', '').strip()
+                    print(f"Found amount: {current_tx['Amount']}")
                 next_line_is_amount = False
                 
             # Check for creator
@@ -475,7 +487,9 @@ def get_withdraw_tokens_txs():
                 
             # Check for recipient
             if line.startswith('recipient:'):
-                current_tx['recipient'] = line.split('recipient: ')[1].strip()
+                current_tx['recipient'] = _normalize_evm_recipient(
+                    line.split('recipient: ')[1].strip()
+                )
                 print(f"Found recipient: {current_tx['recipient']}")
                 
             # Check for success (raw_log)
@@ -526,13 +540,17 @@ def get_withdraw_tokens_txs():
             if not wid:
                 continue
             if wid in existing_by_id:
-                # Update only Layer-side fields (preserve Ethereum-derived data)
-                for key in ('creator', 'txhash', 'success'):
+                # Backfill Layer-side data into stub rows while preserving any existing
+                # Ethereum-derived values that are already present.
+                for key in ('creator', 'recipient', 'txhash', 'success', 'Amount'):
                     val = tx.get(key)
                     if val is not None and str(val).strip() not in ('', 'nan'):
                         existing_by_id[wid][key] = val
             else:
-                existing_by_id[wid] = {k: str(v) for k, v in tx.items()}
+                normalized_tx = {}
+                for key, value in tx.items():
+                    normalized_tx[str(key)] = str(value)
+                existing_by_id[wid] = normalized_tx
                 new_count += 1
 
         if existing_by_id:
