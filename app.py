@@ -283,7 +283,8 @@ def show_deposits():
     
     # Read the withdrawals CSV file
     try:
-        withdrawals_df = pd.read_csv('bridge_withdrawals.csv')
+        withdrawals_csv = os.getenv('BRIDGE_WITHDRAWALS_CSV', 'bridge_withdrawals.csv')
+        withdrawals_df = pd.read_csv(withdrawals_csv)
         
         # Handle timestamp column if it exists
         if 'Timestamp' in withdrawals_df.columns:

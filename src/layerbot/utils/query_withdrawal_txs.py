@@ -105,7 +105,10 @@ def update_withdrawal_amounts():
             current_amount = row.get('Amount', '')
             
             # Skip if we already have an amount for this transaction
-            if current_amount and current_amount != '':
+            if (
+                pd.notna(current_amount) and
+                str(current_amount).strip() not in ('', 'nan')
+            ):
                 continue
                 
             if tx_hash and tx_hash not in ('', 'nan') and not (isinstance(tx_hash, float) and tx_hash != tx_hash):

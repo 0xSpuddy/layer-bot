@@ -390,23 +390,27 @@
                                 <tr class="details-row {% if withdrawal['Claimed'] %}claimed-row{% elif not withdrawal.get('has_tx_data', True) %}unknown-row{% endif %}">
                                     <td colspan="6">
                                         <div class="address-details">
+                                            {% set creator_value = withdrawal.get('creator')|string|trim %}
+                                            {% set recipient_value = withdrawal.get('recipient')|string|trim %}
+                                            {% set txhash_value = withdrawal.get('txhash')|string|trim %}
+                                            {% set amount_raw_value = withdrawal.get('Amount')|string|trim %}
                                             <div class="address-container">
                                                 <div class="address-item">
                                                     <span class="address-label">Creator</span>
-                                                    <span class="address-value">{{ withdrawal['creator'] }}</span>
+                                                    <span class="address-value">{{ creator_value if creator_value and creator_value|lower != 'nan' else 'N/A' }}</span>
                                                 </div>
                                                 <div class="address-item">
                                                     <span class="address-label">Recipient</span>
-                                                    <span class="address-value">{{ withdrawal['recipient'] }}</span>
+                                                    <span class="address-value">{{ recipient_value if recipient_value and recipient_value|lower != 'nan' else 'N/A' }}</span>
                                                 </div>
                                                 <div class="address-item">
                                                     <span class="address-label">Transaction Hash</span>
-                                                    <span class="address-value">{{ withdrawal['txhash'] }}</span>
+                                                    <span class="address-value">{{ txhash_value if txhash_value and txhash_value|lower != 'nan' else 'N/A' }}</span>
                                                 </div>
-                                                {% if withdrawal.get('Amount') %}
+                                                {% if amount_raw_value and amount_raw_value|lower != 'nan' %}
                                                 <div class="address-item">
                                                     <span class="address-label">Amount (Raw)</span>
-                                                    <span class="address-value">{{ withdrawal['Amount'] }} loya</span>
+                                                    <span class="address-value">{{ amount_raw_value }} loya</span>
                                                 </div>
                                                 {% endif %}
                                             </div>
