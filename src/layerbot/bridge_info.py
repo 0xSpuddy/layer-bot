@@ -284,7 +284,7 @@ def main(contract_address=None):
         claimed_ids = get_claimed_deposit_ids()
         
         # Initialize Web3
-        print(f"Initializing Web3 with RPC URL: {rpc_url}")
+        print("Initializing Web3")
         w3 = Web3(Web3.HTTPProvider(rpc_url))
         
         # Verify connection

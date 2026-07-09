@@ -425,94 +425,102 @@ def get_withdraw_tokens_txs():
                 except ValueError:
                     pass
             return recipient
-            
-        # Execute the layerd query command.
-        # --limit is set high enough to return all withdrawals in a single page without
-        # requiring manual pagination (bridge activity is expected to stay well under this).
-        cmd = [
-            './layerd', 'query', 'txs',
-            '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'',
-            '--node', layer_rpc_url,
-            '--limit', '1000',
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        # print("\nDebug - Command output received. Starting parse...")
-        
-        # Parse the output
+
+        def _get_event_attribute(events, event_type, attribute_key):
+            for event in events or []:
+                if event.get('type') != event_type:
+                    continue
+                for attribute in event.get('attributes', []):
+                    if attribute.get('key') == attribute_key:
+                        return attribute.get('value')
+            return None
+
+        def _parse_tx(tx_entry):
+            tx_body = tx_entry.get('tx', {}).get('body', {})
+            messages = tx_body.get('messages', [])
+            message = next(
+                (msg for msg in messages if msg.get('@type') == '/layer.bridge.MsgWithdrawTokens'),
+                messages[0] if messages else {},
+            )
+
+            amount = message.get('amount', {}).get('amount')
+            withdraw_id = _get_event_attribute(tx_entry.get('events'), 'tokens_withdrawn', 'withdraw_id')
+            creator = message.get('creator') or _get_event_attribute(tx_entry.get('events'), 'tokens_withdrawn', 'sender')
+            recipient = message.get('recipient') or _get_event_attribute(
+                tx_entry.get('events'),
+                'tokens_withdrawn',
+                'recipient_evm_address',
+            )
+
+            parsed = {
+                'withdraw_id': str(withdraw_id).replace('"', '').strip() if withdraw_id is not None else '',
+                'creator': str(creator).strip() if creator is not None else '',
+                'recipient': _normalize_evm_recipient(recipient) if recipient else '',
+                'success': tx_entry.get('code', 1) == 0,
+                'txhash': str(tx_entry.get('txhash', '')).strip(),
+            }
+
+            if amount is not None:
+                parsed['Amount'] = str(amount).replace('loya', '').strip()
+
+            return parsed
+
+        page_size = 100
         transactions = []
-        current_tx = None
-        next_line_is_withdraw_id = False
-        next_line_is_amount = False
-        
-        for line in result.stdout.split('\n'):
-            line = line.strip()
-            # print(f"\nProcessing line: '{line}'")
-            
-            # Start of new transaction
-            if line.startswith('- code: 0'):
-                print("Found new transaction")
-                if current_tx:
-                    print(f"Adding previous transaction: {current_tx}")
-                    transactions.append(current_tx)
-                current_tx = {}
-                continue
-            
-            # Check for withdraw_id
-            if line.startswith('key: withdraw_id'):
-                next_line_is_withdraw_id = True
-                continue
-            if next_line_is_withdraw_id:
-                if line.startswith('value:'):
-                    current_tx['withdraw_id'] = line.split('value: ')[1].strip()
-                    print(f"Found withdraw_id: {current_tx['withdraw_id']}")
-                next_line_is_withdraw_id = False
-                
-            # Check for amount
-            if line.startswith('amount:') and 'key:' not in line:
-                next_line_is_amount = True
-                continue
-            if next_line_is_amount:
-                if line.startswith('value:'):
-                    amount = line.split('value: ')[1].strip()
-                    # Remove 'loya' suffix if present
-                    current_tx['Amount'] = amount.replace('loya', '').strip()
-                    print(f"Found amount: {current_tx['Amount']}")
-                next_line_is_amount = False
-                
-            # Check for creator
-            if line.startswith('creator:'):
-                current_tx['creator'] = line.split('creator: ')[1].strip()
-                print(f"Found creator: {current_tx['creator']}")
-                
-            # Check for recipient
-            if line.startswith('recipient:'):
-                current_tx['recipient'] = _normalize_evm_recipient(
-                    line.split('recipient: ')[1].strip()
-                )
-                print(f"Found recipient: {current_tx['recipient']}")
-                
-            # Check for success (raw_log)
-            if line.startswith('raw_log:'):
-                current_tx['success'] = line.strip() == 'raw_log: ""'
-                print(f"Transaction success: {current_tx.get('success')}")
-                
-            # End of transaction
-            if line.startswith('txhash:'):
-                if current_tx:
-                    current_tx['txhash'] = line.split('txhash: ')[1].strip()
-                    print(f"Found txhash: {current_tx['txhash']}")
-                    print(f"Final transaction data: {current_tx}")
-                    transactions.append(current_tx.copy())
-                current_tx = None
-        
-        # Add the last transaction if it exists
-        if current_tx:
-            print(f"Adding final transaction: {current_tx}")
-            transactions.append(current_tx)
-        
+        seen_txhashes = set()
+        total_expected = None
+        page = 1
+
+        while True:
+            cmd = [
+                './layerd', 'query', 'txs',
+                '--query', 'message.action=\'/layer.bridge.MsgWithdrawTokens\'',
+                '--node', layer_rpc_url,
+                '--page', str(page),
+                '--limit', str(page_size),
+                '--order_by', 'asc',
+                '--output', 'json',
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            response = json.loads(result.stdout)
+
+            if total_expected is None:
+                try:
+                    total_expected = int(response.get('total_count', 0))
+                except (TypeError, ValueError):
+                    total_expected = 0
+                print(f"Layer withdrawal query reports {total_expected} total transactions")
+
+            page_txs = response.get('txs') or []
+            print(f"Fetched withdrawal tx page {page} with {len(page_txs)} transaction(s)")
+
+            if not page_txs:
+                break
+
+            new_on_page = 0
+            for tx_entry in page_txs:
+                txhash = str(tx_entry.get('txhash', '')).strip()
+                if not txhash or txhash in seen_txhashes:
+                    continue
+                seen_txhashes.add(txhash)
+                parsed_tx = _parse_tx(tx_entry)
+                if parsed_tx.get('withdraw_id'):
+                    transactions.append(parsed_tx)
+                    new_on_page += 1
+
+            print(f"Parsed {new_on_page} withdrawal tx(s) from page {page}")
+
+            # Some nodes cap tx search results to 100 per page and may report an
+            # unreliable page_total, so keep going until we either exhaust pages,
+            # or collect the reported total count.
+            if len(page_txs) < page_size:
+                break
+            if total_expected and len(seen_txhashes) >= total_expected:
+                break
+
+            page += 1
+
         print(f"\nParsing complete. Found {len(transactions)} transactions")
-        print("\nAll transactions found:")
         for tx in transactions:
             print(f"Transaction: {tx}")
         
