@@ -3,6 +3,7 @@ import subprocess
 import os
 import csv
 import json
+from urllib.parse import urlsplit, urlunsplit
 from dotenv import load_dotenv
 from web3 import Web3
 
@@ -21,12 +22,33 @@ layer_rpc_url = ''.join(c for c in layer_rpc_url if ord(c) >= 32)  # Remove cont
 layer_rpc_url = layer_rpc_url.strip()  # Remove leading/trailing whitespace
 
 
+def _mask_endpoint_url(url):
+    """Mask provider keys commonly stored as the final URL path segment."""
+    if not url:
+        return url
+
+    parsed = urlsplit(url)
+    path_parts = parsed.path.rstrip('/').split('/')
+    last_part = path_parts[-1] if path_parts else ''
+
+    if len(last_part) < 12:
+        return url
+
+    masked_key = f"{last_part[:6]}...{last_part[-4:]}"
+    path_parts[-1] = masked_key
+    masked_path = '/'.join(path_parts)
+    if parsed.path.endswith('/'):
+        masked_path += '/'
+
+    return urlunsplit(parsed._replace(path=masked_path, query=''))
+
+
 @click.command('claim-deposits')
 def claim_deposits():
     """Claim bridge deposits on Layer chain."""
     # Debug prints for environment variables
     click.echo("\nDebug - Environment Variables:")
-    click.echo(f"LAYER_RPC_URL: {layer_rpc_url}")
+    click.echo(f"LAYER_RPC_URL: {_mask_endpoint_url(layer_rpc_url)}")
     click.echo(f"ACCOUNT_NAME: {account_name}")
     click.echo(f"ACCOUNT_TELLOR_ADDRESS: {account_tellor_address}")
     click.echo(f"CSV_PATH: {csv_path}")
