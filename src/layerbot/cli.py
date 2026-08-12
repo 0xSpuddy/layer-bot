@@ -61,8 +61,15 @@ def cli(ctx, auto_tipper):
 
 @click.command('bridge-monitor')
 def bridge_monitor():
-    """Monitor bridge deposits by running bridge-scan deposits every 120 seconds."""
+    """Monitor bridge deposits and withdrawals at the configured interval."""
+    try:
+        scan_interval = max(30, int(os.getenv("BRIDGE_SCAN_INTERVAL", "180")))
+    except ValueError:
+        click.echo("Invalid BRIDGE_SCAN_INTERVAL; using 180 seconds")
+        scan_interval = 180
+
     click.echo("Starting bridge monitor...")
+    click.echo(f"Scan interval: {scan_interval} seconds")
     click.echo("Press Ctrl+C to stop")
     
     try:
@@ -71,8 +78,8 @@ def bridge_monitor():
             subprocess.run(['layerbot', 'bridge-scan', 'deposits'], check=True)
             click.echo("\nRunning bridge-scan withdrawals...")
             subprocess.run(['layerbot', 'bridge-scan', 'withdrawals'], check=True)
-            click.echo("Waiting 180 seconds before next scan...")
-            time.sleep(180)
+            click.echo(f"Waiting {scan_interval} seconds before next scan...")
+            time.sleep(scan_interval)
     except KeyboardInterrupt:
         click.echo("\nBridge monitor stopped")
     except Exception as e:

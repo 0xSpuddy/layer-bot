@@ -61,3 +61,6 @@ requester_addresses.csv
 layerd
 *.csv
 scan_time.json
+bridge_withdrawals.backup
+.gitignore
+bridge_deposits.backup

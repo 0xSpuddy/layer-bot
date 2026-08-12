@@ -6,6 +6,7 @@ from web3 import Web3
 from eth_account import Account
 from decimal import Decimal
 from layerbot.commands.add_public_addrs import refresh_balances
+from layerbot.utils.ethereum_rpc import get_ethereum_web3
 
 def get_zero_balance_addresses(df):
     """Get addresses with 0 SepTRB balance from DataFrame."""
@@ -103,16 +104,13 @@ def send_to_requesters(addresses):
     # Get required environment variables
     eth_address = os.getenv('ETH_ADDRESS')
     private_key = os.getenv('ETH_PRIVATE_KEY')
-    eth_rpc_url = os.getenv('ETHEREUM_RPC_URL')
     
-    if not all([eth_address, private_key, eth_rpc_url]):
-        click.echo("Error: Missing required environment variables (ETH_ADDRESS, ETH_PRIVATE_KEY, ETHEREUM_RPC_URL)")
+    if not all([eth_address, private_key]):
+        click.echo("Error: Missing required environment variables (ETH_ADDRESS, ETH_PRIVATE_KEY)")
         return
 
-    # Initialize Web3
-    w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
-    if not w3.is_connected():
-        click.echo("Error: Could not connect to Ethereum RPC")
+    w3 = get_ethereum_web3()
+    if w3 is None:
         return
     
     # SepTRB token contract setup

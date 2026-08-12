@@ -4,7 +4,7 @@ import os
 import csv
 import json
 from dotenv import load_dotenv
-from web3 import Web3
+from layerbot.utils.ethereum_rpc import get_ethereum_web3
 
 # Load environment variables at the start
 load_dotenv()
@@ -12,7 +12,6 @@ layer_rpc_url = os.getenv('LAYER_RPC_URL', '').strip()  # Add strip() to remove 
 account_name = os.getenv('ACCOUNT_NAME')
 account_tellor_address = os.getenv('ACCOUNT_TELLOR_ADDRESS')
 csv_path = os.getenv('BRIDGE_DEPOSITS_CSV', 'bridge_deposits.csv')
-ethereum_rpc_url = os.getenv('ETHEREUM_RPC_URL')
 # Use CURRENT address, fall back to _1 for backwards compatibility
 BRIDGE_CONTRACT_ADDRESS = os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT') or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
 
@@ -27,15 +26,13 @@ def bridge_request():
     # Get ETH address from env
     eth_address = os.getenv('ETH_ADDRESS')
     
-    if not all([ethereum_rpc_url, BRIDGE_CONTRACT_ADDRESS, eth_address]):
-        click.echo(click.style("Error: Required environment variables missing. Please check ETHEREUM_RPC_URL, BRIDGE_CONTRACT_ADDRESS_CURRENT, and ETH_ADDRESS", fg='red'))
+    if not all([BRIDGE_CONTRACT_ADDRESS, eth_address]):
+        click.echo(click.style("Error: Required environment variables missing. Please check BRIDGE_CONTRACT_ADDRESS_CURRENT and ETH_ADDRESS", fg='red'))
         return
 
     try:
-        # Initialize Web3
-        w3 = Web3(Web3.HTTPProvider(ethereum_rpc_url))
-        if not w3.is_connected():
-            click.echo(click.style("Error: Could not connect to Ethereum RPC", fg='red'))
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return
 
         # Set the default account

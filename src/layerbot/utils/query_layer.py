@@ -6,8 +6,10 @@ import base64
 import os
 from dotenv import load_dotenv
 import csv
-from web3 import Web3
+import math
+import time
 from datetime import datetime
+from layerbot.utils.ethereum_rpc import get_ethereum_web3
 
 def generate_queryId(deposit_id):
     """
@@ -106,16 +108,47 @@ def get_claimed_deposit_ids():
             print("Error: BRIDGE_DEPOSITS_CSV not found in .env file")
             return set()
             
-        # Read all deposit IDs from CSV
+        # Completed deposits are immutable, so only unresolved rows need another
+        # Layer RPC query. Rechecking all history caused a burst every scan.
         deposit_ids = set()
+        claimed_ids = set()
         with open(base_csv, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                deposit_ids.add(row['Deposit ID'])
+                deposit_id = row['Deposit ID']
+                is_already_claimed = (
+                    str(row.get('Status', '')).lower() == 'completed'
+                    or str(row.get('Claimed', '')).lower() == 'yes'
+                )
+                if is_already_claimed:
+                    claimed_ids.add(deposit_id)
+                else:
+                    deposit_ids.add(deposit_id)
+
+        try:
+            check_limit = max(1, int(os.getenv('BRIDGE_CLAIM_CHECK_LIMIT', '25')))
+        except ValueError:
+            print("Warning: Invalid BRIDGE_CLAIM_CHECK_LIMIT; using 25")
+            check_limit = 25
+
+        pending_ids = sorted(deposit_ids, key=int)
+        if len(pending_ids) > check_limit:
+            try:
+                scan_interval = max(1, int(os.getenv('BRIDGE_SCAN_INTERVAL', '180')))
+            except ValueError:
+                scan_interval = 180
+            batch_count = math.ceil(len(pending_ids) / check_limit)
+            batch_index = (int(time.time()) // scan_interval) % batch_count
+            batch_start = batch_index * check_limit
+            print(
+                f"Checking batch {batch_index + 1}/{batch_count} "
+                f"({check_limit} maximum Layer RPC queries)"
+            )
+            pending_ids = pending_ids[batch_start:batch_start + check_limit]
         
-        # Query each deposit ID
-        claimed_ids = set()
-        for deposit_id in deposit_ids:
+        # Query a bounded number of unresolved deposit IDs.
+        checked_ids = set()
+        for deposit_id in pending_ids:
             print(f"\nChecking deposit ID: {deposit_id}")
             cmd = [
                 './layerd',
@@ -128,14 +161,24 @@ def get_claimed_deposit_ids():
             ]
             
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=15,
+                )
                 # Parse the output - expecting a simple true/false response
                 is_claimed = 'true' in result.stdout.lower()
+                checked_ids.add(deposit_id)
                 if is_claimed:
                     claimed_ids.add(deposit_id)
                 print(f"Deposit {deposit_id} claimed: {is_claimed}")
             except subprocess.CalledProcessError as e:
                 print(f"Error querying deposit {deposit_id}: {e.stderr}")
+                continue
+            except subprocess.TimeoutExpired:
+                print(f"Timed out querying deposit {deposit_id}")
                 continue
         
         print(f"\nFound {len(claimed_ids)} claimed deposits")
@@ -168,8 +211,8 @@ def get_claimed_deposit_ids():
                     if 'Claimed' in row:
                         row['Claimed'] = 'yes'
                 else:
-                    # Keep existing status for unclaimed deposits (will be calculated in app.py)
-                    if 'Claimed' in row:
+                    # Preserve rows that were not checked or whose query failed.
+                    if row['Deposit ID'] in checked_ids and 'Claimed' in row:
                         row['Claimed'] = 'no'
                 rows.append(row)
         
@@ -223,16 +266,8 @@ def get_eth_balance(address):
         # Load environment variables
         load_dotenv()
         
-        # Get the Ethereum RPC URL
-        eth_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-        if not eth_rpc_url:
-            print("Error: ETHEREUM_RPC_URL not found in .env file")
-            return "0"
-            
-        # Initialize Web3
-        w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
-        if not w3.is_connected():
-            print("Error: Could not connect to Ethereum RPC")
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return "0"
         
         # Get ETH balance
@@ -249,14 +284,8 @@ def get_septrb_balance(address):
     try:
         load_dotenv()
         
-        eth_rpc_url = os.getenv('ETHEREUM_RPC_URL')
-        if not eth_rpc_url:
-            print("Error: ETHEREUM_RPC_URL not found in .env file")
-            return "0"
-            
-        w3 = Web3(Web3.HTTPProvider(eth_rpc_url))
-        if not w3.is_connected():
-            print("Error: Could not connect to Ethereum RPC")
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return "0"
         
         # SepTRB token contract address
