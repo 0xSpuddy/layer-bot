@@ -5,17 +5,18 @@ import json
 import csv
 from datetime import datetime
 from layerbot.utils.query_layer import generate_queryId, get_claimed_deposit_ids
-from layerbot.utils.get_timestamp_from_height import get_timestamp_from_height
-from layerbot.utils.query_withdrawal_txs import update_withdrawal_amounts
 from layerbot.utils.discord_alerts import alert_new_bridge_deposits
 import pandas as pd
+from layerbot.utils.ethereum_rpc import get_ethereum_web3
 
 def load_abi():
     """Load the ABI from the JSON file."""
     with open('contracts/bridge_abi.json', 'r') as f:
         return json.load(f)
 
-def get_deposit_timestamps_from_ethereum(w3, contract):
+def get_deposit_timestamps_from_ethereum(
+    w3, contract, min_deposit_id=None, max_deposit_id=None
+):
     """
     Get deposit timestamps from Ethereum Deposit events.
     Returns a dictionary mapping deposit_id -> timestamp
@@ -32,15 +33,21 @@ def get_deposit_timestamps_from_ethereum(w3, contract):
         
         print(f"Found {len(deposit_events)} Deposit events")
         
+        block_timestamps = {}
         for event in deposit_events:
             deposit_id = event['args']['_depositId']
+            if min_deposit_id is not None and deposit_id < min_deposit_id:
+                continue
+            if max_deposit_id is not None and deposit_id > max_deposit_id:
+                continue
             block_number = event['blockNumber']
             
-            # Get the block to get the timestamp
-            block = w3.eth.get_block(block_number)
-            timestamp = datetime.fromtimestamp(block['timestamp'])
+            # Multiple deposits can share a block; query its timestamp only once.
+            if block_number not in block_timestamps:
+                block = w3.eth.get_block(block_number)
+                block_timestamps[block_number] = datetime.fromtimestamp(block['timestamp'])
             
-            deposit_timestamps[deposit_id] = timestamp
+            deposit_timestamps[deposit_id] = block_timestamps[block_number]
             
         print(f"Collected timestamps for {len(deposit_timestamps)} deposits")
         
@@ -155,6 +162,11 @@ def check_withdrawal_status(w3, contract, withdraw_id):
         print(f"Error checking withdrawal status for ID {withdraw_id}: {e}")
         return False
 
+
+def _is_true(value):
+    return str(value).strip().lower() in ('true', '1', 'yes')
+
+
 def update_withdrawal_status():
     """Update the claimed status for all withdrawals in the CSV file."""
     csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV')
@@ -162,19 +174,9 @@ def update_withdrawal_status():
         print("Error: BRIDGE_WITHDRAWALS_CSV not found in .env file")
         return
 
-    # Get the RPC URL from environment
-    rpc_url = os.getenv('ETHEREUM_RPC_URL')
-    if not rpc_url:
-        print("Error: ETHEREUM_RPC_URL not found in .env file")
-        return
-
     try:
-        # Initialize Web3
-        w3 = Web3(Web3.HTTPProvider(rpc_url))
-        
-        # Verify connection
-        if not w3.is_connected():
-            print("Error: Could not connect to the RPC endpoint")
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return
             
         # Load contract ABI
@@ -218,8 +220,14 @@ def update_withdrawal_status():
         if 'Claimed' not in df.columns:
             df['Claimed'] = False
             
-        # Update claimed status for each withdrawal — claimed on any contract counts
+        # Claimed withdrawals are final. Polling every historical row against
+        # every contract was the largest source of repeated Ethereum RPC calls.
+        unresolved_count = sum(not _is_true(value) for value in df['Claimed'])
+        print(f"Checking {unresolved_count} unresolved withdrawal(s)")
+
         for index, row in df.iterrows():
+            if _is_true(row['Claimed']):
+                continue
             withdraw_id = row['withdraw_id']
             is_claimed = any(check_withdrawal_status(w3, c, withdraw_id) for c in contracts)
             df.at[index, 'Claimed'] = is_claimed
@@ -248,7 +256,7 @@ def update_withdrawal_status():
     except Exception as e:
         print(f"Error updating withdrawal status: {e}")
 
-def main(contract_address=None):
+def main(contract_address=None, claimed_ids=None):
     # Load environment variables
     load_dotenv()
     
@@ -259,12 +267,6 @@ def main(contract_address=None):
         print("Error: No bridge contract address found. Set BRIDGE_CONTRACT_ADDRESS_CURRENT or BRIDGE_CONTRACT_ADDRESS_1 in .env")
         return
         
-    # Get the RPC URL from environment
-    rpc_url = os.getenv('ETHEREUM_RPC_URL')
-    if not rpc_url:
-        print("Error: ETHEREUM_RPC_URL not found in .env file")
-        return
-    
     try:
         print("Starting program execution...")
         
@@ -279,20 +281,16 @@ def main(contract_address=None):
         existing_ids = get_existing_deposit_ids(contract_address=contract_address)
         print(f"Found {len(existing_ids)} existing deposits in CSV file for contract {contract_address}")
         
-        # Get claimed deposit IDs
-        print("Getting claimed deposit IDs...")
-        claimed_ids = get_claimed_deposit_ids()
-        
-        # Initialize Web3
-        print("Initializing Web3")
-        w3 = Web3(Web3.HTTPProvider(rpc_url))
-        
-        # Verify connection
-        print("Verifying Web3 connection...")
-        if not w3.is_connected():
-            print("Error: Could not connect to the RPC endpoint")
+        # A multi-contract scan can pass this once so every historical deposit is
+        # not queried from Layer again for each Ethereum bridge contract.
+        if claimed_ids is None:
+            print("Getting claimed deposit IDs...")
+            claimed_ids = get_claimed_deposit_ids()
+
+        print("Initializing and checking Ethereum RPC...")
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return
-        print("Successfully connected to RPC endpoint")
             
         # Load contract ABI
         print("Loading contract ABI...")
@@ -311,23 +309,6 @@ def main(contract_address=None):
         except Exception as e:
             print(f"Error creating contract instance: {e}")
             return
-        
-        # Update withdrawal status
-        print("\nUpdating withdrawal status...")
-        update_withdrawal_status()
-        
-        # Update withdrawal amounts
-        print("\nUpdating withdrawal amounts...")
-        update_withdrawal_amounts()
-        
-        # Update withdrawal timestamps
-        print("\nUpdating withdrawal timestamps...")
-        from layerbot.utils.query_withdrawal_txs import update_withdrawal_timestamps
-        update_withdrawal_timestamps()
-        
-        # Get deposit timestamps from Ethereum
-        print("\nGetting deposit timestamps from Ethereum...")
-        deposit_timestamps = get_deposit_timestamps_from_ethereum(w3, contract)
         
         # 1. Get and print the most recent deposit ID
         print("\nAttempting to get deposit ID...")
@@ -384,6 +365,20 @@ def main(contract_address=None):
         new_deposits_for_discord = []  # Track new deposits for Discord alerts
         
         print(f"Scanning deposits starting from ID {current_deposit_id} (CSV has {len(existing_ids)} existing deposits, on-chain counter={deposit_id})")
+
+        # Event log history and one block lookup per event are expensive. Only
+        # fetch them when the contract counter shows there is new data to save.
+        if current_deposit_id <= deposit_id:
+            print("\nGetting deposit timestamps from Ethereum...")
+            deposit_timestamps = get_deposit_timestamps_from_ethereum(
+                w3,
+                contract,
+                min_deposit_id=current_deposit_id,
+                max_deposit_id=deposit_id,
+            )
+        else:
+            deposit_timestamps = {}
+            print("No new deposits; skipping Ethereum event history scan")
         
         # Iterate up to the on-chain depositId counter.  Contracts may not assign deposit IDs
         # starting from 1 (e.g. V2 continued V1's counter and its first deposit is ID 154),
@@ -485,16 +480,9 @@ def collect_withdrawals_from_ethereum():
     load_dotenv()
 
     csv_file = os.getenv('BRIDGE_WITHDRAWALS_CSV', 'bridge_withdrawals.csv')
-    rpc_url = os.getenv('ETHEREUM_RPC_URL')
-
-    if not rpc_url:
-        print("Error: ETHEREUM_RPC_URL not found in .env file")
-        return
-
     try:
-        w3 = Web3(Web3.HTTPProvider(rpc_url))
-        if not w3.is_connected():
-            print("Error: Could not connect to Ethereum RPC")
+        w3 = get_ethereum_web3()
+        if w3 is None:
             return
 
         abi = load_abi()
@@ -521,7 +509,24 @@ def collect_withdrawals_from_ethereum():
         #   amount_loya = event_amount_wei / 1e12
         TOKEN_DECIMAL_PRECISION_MULTIPLIER = 10 ** 12
 
+        # Load existing data before processing events. Settled rows already have
+        # the event-derived fields and do not need another block timestamp call.
+        existing_rows = {}
+        if os.path.exists(csv_file):
+            try:
+                df_existing = pd.read_csv(csv_file)
+                df_existing['withdraw_id'] = (
+                    df_existing['withdraw_id'].astype(str).str.replace('"', '').str.strip()
+                )
+                for _, row in df_existing.iterrows():
+                    wid = str(row['withdraw_id']).strip()
+                    if wid and wid != 'nan':
+                        existing_rows[wid] = row.to_dict()
+            except Exception as e:
+                print(f"Warning: could not read existing withdrawals CSV: {e}")
+
         eth_withdrawals = {}  # withdraw_id (int) -> row dict
+        block_timestamps = {}
 
         for contract_address in contract_addrs:
             try:
@@ -537,8 +542,19 @@ def collect_withdrawals_from_ethereum():
 
                 for event in events:
                     withdraw_id = int(event['args']['_depositId'])
-                    block = w3.eth.get_block(event['blockNumber'])
-                    timestamp = datetime.fromtimestamp(block['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                    existing = existing_rows.get(str(withdraw_id), {})
+                    if _is_true(existing.get('Claimed')) and str(
+                        existing.get('Timestamp', '')
+                    ).strip() not in ('', 'nan', 'None'):
+                        continue
+
+                    block_number = event['blockNumber']
+                    if block_number not in block_timestamps:
+                        block = w3.eth.get_block(block_number)
+                        block_timestamps[block_number] = datetime.fromtimestamp(
+                            block['timestamp']
+                        ).strftime('%Y-%m-%d %H:%M:%S')
+                    timestamp = block_timestamps[block_number]
                     amount_loya = str(int(event['args']['_amount'] // TOKEN_DECIMAL_PRECISION_MULTIPLIER))
                     recipient = event['args']['_recipient'].lower()
                     creator = event['args']['_sender']  # Layer address string
@@ -559,21 +575,6 @@ def collect_withdrawals_from_ethereum():
                 print(f"  Error fetching Withdraw events from {contract_address}: {e}")
 
         print(f"Total: {len(eth_withdrawals)} unique claimed withdrawals from Ethereum events")
-
-        # Load existing CSV to preserve Layer-side data (txhash, etc.)
-        existing_rows = {}  # withdraw_id str -> row dict
-        if os.path.exists(csv_file):
-            try:
-                df_existing = pd.read_csv(csv_file)
-                df_existing['withdraw_id'] = (
-                    df_existing['withdraw_id'].astype(str).str.replace('"', '').str.strip()
-                )
-                for _, row in df_existing.iterrows():
-                    wid = str(row['withdraw_id']).strip()
-                    if wid and wid != 'nan':
-                        existing_rows[wid] = row.to_dict()
-            except Exception as e:
-                print(f"Warning: could not read existing withdrawals CSV: {e}")
 
         # Merge: start with existing data, then overlay Ethereum event data
         merged = {wid: dict(row) for wid, row in existing_rows.items()}

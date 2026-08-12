@@ -17,14 +17,24 @@ def deposits():
     load_dotenv()
     from layerbot.bridge_info import main as run_deposits_scan
 
+    # Claimed status belongs to Layer, not to an individual Ethereum contract.
+    # Resolve it once and reuse it across every configured bridge contract.
+    claimed_ids = get_claimed_deposit_ids()
+
     # Scan the current/V1 contract (main() resolves address from env if not given)
-    run_deposits_scan()
+    run_deposits_scan(claimed_ids=claimed_ids)
 
     # Scan V2 contract if configured
     v2_address = os.getenv('BRIDGE_CONTRACT_V2_ADDRESS')
-    if v2_address:
+    current_address = (
+        os.getenv('BRIDGE_CONTRACT_ADDRESS_CURRENT')
+        or os.getenv('BRIDGE_CONTRACT_ADDRESS_1')
+    )
+    if v2_address and (not current_address or v2_address.lower() != current_address.lower()):
         print(f"\nScanning V2 contract: {v2_address}")
-        run_deposits_scan(contract_address=v2_address)
+        run_deposits_scan(contract_address=v2_address, claimed_ids=claimed_ids)
+    elif v2_address:
+        print("\nV2 contract matches the current contract, skipping duplicate scan")
     else:
         print("\nBRIDGE_CONTRACT_V2_ADDRESS not set, skipping V2 scan")
 
