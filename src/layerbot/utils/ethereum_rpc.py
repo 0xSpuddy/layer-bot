@@ -6,7 +6,8 @@ import time
 from typing import List, Optional
 
 from web3 import Web3
-from web3.providers import BaseProvider, HTTPProvider
+from web3.providers import HTTPProvider
+from web3.providers.base import JSONBaseProvider
 
 
 _RETRYABLE_ERROR_CODES = {-32005, -32016, -32603}
@@ -31,7 +32,7 @@ def _is_retryable_response(response) -> bool:
     return code in _RETRYABLE_ERROR_CODES or any(text in message for text in _RETRYABLE_ERROR_TEXT)
 
 
-class FallbackHTTPProvider(BaseProvider):
+class FallbackHTTPProvider(JSONBaseProvider):
     """Use another HTTP endpoint when the active endpoint has a transient failure."""
 
     def __init__(

@@ -35,6 +35,25 @@ class EthereumRpcFallbackTests(unittest.TestCase):
         self.assertEqual(provider.make_request("eth_chainId", []), fallback.make_request.return_value)
         self.assertEqual(provider._active_index, 1)
 
+    @patch("layerbot.utils.ethereum_rpc.HTTPProvider")
+    def test_is_connected_uses_active_endpoint(self, provider_class):
+        primary = Mock()
+        primary.make_request.return_value = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": "erigon/3.5.5",
+        }
+        provider_class.return_value = primary
+
+        provider = FallbackHTTPProvider(
+            ["https://primary.invalid"],
+            10,
+            request_interval=0,
+        )
+
+        self.assertTrue(provider.is_connected())
+        primary.make_request.assert_called_once_with("web3_clientVersion", [])
+
     @patch("layerbot.utils.ethereum_rpc.time.sleep")
     @patch(
         "layerbot.utils.ethereum_rpc.time.monotonic",
